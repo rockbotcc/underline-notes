@@ -17,7 +17,7 @@ Obsidian 插件还支持可选的自动标签。配置模型并开启该功能�
 
 > 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记，把摘录保存到文稿里的「划线笔记」文件夹。
 
-也想用 Obsidian 回顾时，可以在同一句后加上「并安装配套 Obsidian 插件，用 Obsidian 打开同一文件夹里的卡片盒」。如果 Chrome 已装好，只需说「继续为刚才的笔记文件夹安装 Obsidian 插件，并打开卡片盒」。
+确认摘录已保存到本地后，Codex 会问你是否要用 Obsidian 回顾。你可以选择安装 Obsidian 和配套插件、只给已有的 Obsidian 安装插件，或只用 Chrome。如果 Chrome 已装好，只需说「继续为刚才的笔记文件夹安装 Obsidian 插件，并打开卡片盒」。
 
 **手动安装**
 
