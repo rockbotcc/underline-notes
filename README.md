@@ -6,24 +6,22 @@ Obsidian 插件还支持可选的自动标签。配置模型并开启该功能�
 
 ## 本地安装
 
-从源码安装需要桌面版 Chrome 120+ 和 Node.js 22.18+（含 npm）。Obsidian 是可选的卡片阅读工具。
+桌面版 Chrome 120+ 可直接安装发布包。想用卡片回顾时，再下载 Obsidian 插件。
 
-**让 Codex 帮你安装。** 复制下面这句话即可。你可以新建「划线笔记」文件夹、选一个已有文件夹，或使用已有的 Obsidian 笔记库。
+| 下载 | 用途 |
+| --- | --- |
+| [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip) | 网页划线、批注和本地保存 |
+| [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip) | 在 Obsidian 1.6+ 中按卡片浏览已有摘录 |
 
-> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 帮我安装 Chrome 划线笔记，把摘录保存到本地文件夹。
+**让 Codex 帮你安装。** 可以直接把这句话发给 Codex：
 
-**自己安装**：在一个准备长期保留的位置执行以下命令。如果已经下载并解压源码，直接在含有 `package.json` 的目录执行最后两行即可。
+> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记，把摘录保存到本地文件夹。
 
-```sh
-git clone https://github.com/rockbotcc/underline-notes.git
-cd underline-notes
-npm ci
-npm run build
-```
+**手动安装**
 
-1. **安装 Chrome 扩展。** 在地址栏打开 `chrome://extensions`，开启「开发者模式」，点击「加载已解压的扩展程序」，选择刚生成的 `dist/`。将「划线笔记 / Underline Notes」固定到工具栏。Chrome 会从这里加载扩展，请保留这个目录。
+1. **安装 Chrome 扩展。** 下载上方 Chrome ZIP，将它解压到长期保留的文件夹，例如「应用工具/划线笔记扩展」。在地址栏打开 `chrome://extensions`，开启「开发者模式」，点击「加载已解压的扩展程序」，选择解压后能直接看到 `manifest.json` 的文件夹。将扩展固定到工具栏，并保留这个文件夹。
 2. **保存到本地文件夹。** 打开扩展「选项」→「选择笔记文件夹」。在系统窗口中新建「划线笔记」，或选一个已有文件夹并允许读写。在网页上划线并保存批注，点击「立即同步笔记」，即可在所选目录的 `Reading/Cards/` 中打开对应的 Markdown 文件。到这里就可以日常使用了。
-3. **可选：用 Obsidian 看卡片。** 在 Obsidian 1.6+ 选择「打开本地仓库」（Open folder as vault），打开刚才选的文件夹，也就是包含 `Reading/` 的那一层。将 `dist-obsidian/noting/` 中的 `main.js`、`manifest.json`、`styles.css` 复制到该仓库的 `.obsidian/plugins/noting/`（按需创建目录）。重新打开仓库，在「设置 → 第三方插件」中启用「划线笔记 / Underline Notes」，再打开 `Reading/卡片盒.md`，已有摘录便会以卡片展示。
+3. **可选：用 Obsidian 看卡片。** 下载上方 Obsidian ZIP 并解压。在 Obsidian 中选择「打开本地仓库」（Open folder as vault），打开第 2 步选的笔记文件夹。进入「设置 → 第三方插件」，打开插件文件夹，把解压得到的 `noting` 文件夹放进去（最终位置为 `.obsidian/plugins/noting/main.js`）。重新打开仓库，在第三方插件列表启用「划线笔记 / Underline Notes」，再打开 `Reading/卡片盒.md`。
 
 升级已有安装或使用自定义 Obsidian 配置目录时，请参见[本地安装指南](INSTALL.md)。
 
