@@ -53,7 +53,7 @@ async function refresh(fillForm = false) {
   get('highlight-count').textContent = String(status.annotations);
   get('pending-count').textContent = String(status.pending.length);
   get('connection-state').textContent = status.directoryName ? '文件夹已连接' : '尚未连接';
-  get('folder-name').textContent = status.directoryName ? `已连接 ${currentSettings.vaultName || '本地文件夹'}/${status.directoryName}/ · 打开卡片盒.md 即可回顾摘录与想法。` : '你也可以选择普通文件夹，之后再用 Obsidian 打开。';
+  get('folder-name').textContent = status.directoryName ? `已连接 ${currentSettings.vaultName || '本地文件夹'}/${status.directoryName}/ · 摘录和批注保存在 Cards/ 下的 Markdown 文件中。` : '可以新建「划线笔记」文件夹，以后也能用 Obsidian 打开它。';
   get('sync-status').textContent = status.lastSync ? `最近同步 ${new Date(status.lastSync).toLocaleString()}` : '划线和笔记先保存在浏览器本地';
   const link = get<HTMLAnchorElement>('open-obsidian');
   link.hidden = !currentSettings.vaultName || !status.directoryName;
@@ -67,8 +67,8 @@ async function flush() {
   await rpc({ type: 'FLUSH' });
   const status = await rpc<Status>({ type: 'STATUS' });
   if (status.syncError) throw new Error(status.syncError);
-  if (!status.directoryName) { notice('请先选择 Obsidian 仓库或本地文件夹。'); return; }
-  notice(status.pending.length ? '正在同步，剩余记录会继续重试。' : '笔记已双向同步，可以在浏览器或 Obsidian 中继续编辑。');
+  if (!status.directoryName) { notice('请先选择笔记文件夹。'); return; }
+  notice(status.pending.length ? '正在同步，剩余记录会继续重试。' : '笔记已与本地文件夹同步。');
 }
 
 action('choose-directory', async () => {

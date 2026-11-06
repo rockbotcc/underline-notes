@@ -86,10 +86,10 @@ async function refreshOutputStatus(announce = false) {
 }
 
 function outputMessage() {
-  if (!outputStatus?.connected) return '已保存在浏览器；连接 Obsidian 后才会自动写入';
+  if (!outputStatus?.connected) return '已保存在浏览器；连接笔记文件夹后可自动写入';
   if (outputStatus.error) return '同步需要处理：' + outputStatus.error;
-  if (outputStatus.pending) return '已保存在浏览器，正在等待写入 Obsidian';
-  return `已写入 Obsidian · ${outputStatus.vaultName}`;
+  if (outputStatus.pending) return '已保存在浏览器，正在等待写入笔记文件夹';
+  return `已写入笔记文件夹 · ${outputStatus.vaultName}`;
 }
 
 const toolbar = element('div', 'toolbar');
@@ -332,7 +332,7 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
     editor.append(imagePreview(annotation.image), hint);
   } else editor.append(colors);
   editor.append(input, actions);
-  if (!outputStatus?.connected) editor.append(button('连接 Obsidian，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
+  if (!outputStatus?.connected) editor.append(button('连接笔记文件夹，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
   editor.hidden = false;
   editorDraft = false;
   positionFloating(editor, rect);
@@ -457,7 +457,7 @@ function renderPanel(focusNote = false) {
     const link = element('a', '', '在 Obsidian 回顾 ↗');
     link.href = obsidianUrl(settings, article?.id);
     footer.append(link);
-  } else footer.append(button('连接 Obsidian，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
+  } else footer.append(button('连接笔记文件夹，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
   footer.append(button('设置与文件写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }));
   panel.append(header, main, footer);
   main.scrollTop = scrollTop;

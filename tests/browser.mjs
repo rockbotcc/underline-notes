@@ -99,7 +99,7 @@ try {
   await options.locator('#choose-directory').waitFor();
   if (process.env.NOTING_NATIVE_PICKER) {
     console.log('NATIVE_PICKER_READY 请在系统弹窗选择测试仓库');
-    await options.getByRole('button', { name: '选择 Obsidian 仓库', exact: true }).click();
+    await options.getByRole('button', { name: '选择笔记文件夹', exact: true }).click();
     await options.getByText('文件夹已连接', { exact: true }).waitFor({ timeout: 600000 });
     console.log('PASS 原生文件夹选择与授权');
   }
@@ -167,7 +167,7 @@ try {
   await page.locator('.card').first().getByRole('button', { name: '编辑笔记', exact: true }).click();
   await highlightNote.fill('这句话可以用在设计评审中。');
   await page.getByRole('button', { name: '保存', exact: true }).click();
-  if (!process.env.NOTING_NATIVE_PICKER) await page.locator('.output-status').filter({ hasText: '连接 Obsidian 后才会自动写入' }).waitFor();
+  if (!process.env.NOTING_NATIVE_PICKER) await page.locator('.output-status').filter({ hasText: '连接笔记文件夹后可自动写入' }).waitFor();
   await page.getByRole('button', { name: '编辑文章笔记', exact: true }).click();
   const pageNote = page.getByRole('textbox', { name: '文章笔记', exact: true });
   const pageHint = page.locator('#page-note-hint');
