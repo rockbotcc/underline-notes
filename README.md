@@ -4,18 +4,28 @@ Chrome 中划线、写批注和记录阅读，Obsidian 中通过独立卡片回�
 
 Chrome 扩展「划线笔记 / Underline Notes」负责采集；同名配套 Obsidian 插件提供卡片流、就地补写、标签与搜索、逐张回顾和本地全文侧栏。内部 `noting` 标识与数据格式保持不变。
 
-## 安装开发版
+## 本地安装
+
+可以直接从 GitHub 源码安装。准备桌面版 Chrome 120+、Obsidian 1.6+ 和 Node.js 22.18+（含 npm）。只需要网页划线和批注时，安装 Chrome 扩展即可。
+
+**让 Codex 帮你安装**：把这句话发给 Codex，并把最后的路径换成自己的 Obsidian 仓库路径。
+
+> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 在本机安装划线笔记的 Chrome 和 Obsidian 插件。我的 Obsidian 仓库路径是「……」。
+
+**自己安装**：在一个准备长期保留的位置执行以下命令。如果已经下载并解压源码，直接在含有 `package.json` 的目录执行最后两行即可。
 
 ```sh
+git clone https://github.com/rockbotcc/underline-notes.git
+cd underline-notes
 npm ci
 npm run build
 ```
 
-在 Chrome 的 `chrome://extensions` 打开开发者模式，点击「加载已解压的扩展程序」，选择此项目的 `dist` 文件夹。将「划线笔记 / Underline Notes」固定到工具栏。更新构建后，点击扩展卡片的重新加载，再刷新正在阅读的网页。
+1. **安装 Chrome 扩展。** 在地址栏打开 `chrome://extensions`，开启「开发者模式」，点击「加载已解压的扩展程序」，选择刚生成的 `dist/`。将「划线笔记 / Underline Notes」固定到工具栏。Chrome 会从这里加载扩展，请保留这个目录。
+2. **安装 Obsidian 插件。** 打开你要使用的笔记仓库，将 `dist-obsidian/noting/` 中的 `main.js`、`manifest.json`、`styles.css` 复制到仓库内的 `.obsidian/plugins/noting/`（按需创建目录）。重新打开 Obsidian，在「设置 → 第三方插件」中允许社区插件并启用「划线笔记 / Underline Notes」。
+3. **连接并验证。** 打开 Chrome 扩展的「选项」，点击「选择 Obsidian 仓库」，选中上一步的笔记仓库根目录并允许写入。在一篇普通网页文章上划线、保存批注，然后点击设置页的「立即同步笔记」。在 Obsidian 打开 `Reading/卡片盒.md`，即可查看这条摘录。
 
-将构建生成的 `dist-obsidian/noting/` 整个文件夹复制到 Obsidian 仓库的 `.obsidian/plugins/noting/`，然后在该仓库的「设置 → 第三方插件」中启用「划线笔记 / Underline Notes」。点击左侧叠卡图标，或执行命令「划线笔记 / Underline Notes: 打开卡片盒」。这是本地开发版，尚未发布到社区插件市场。
-
-启用插件后，打开 `Reading/卡片盒.md` 会进入专用视图。不启用插件时，这个文件仍可作为普通 Markdown 阅读。插件设置可调整资料文件夹，默认与 Chrome 的 `Reading/` 一致。
+升级已有安装或使用自定义 Obsidian 配置目录时，请参见[本地安装指南](INSTALL.md)。
 
 ## 源码与发布
 
