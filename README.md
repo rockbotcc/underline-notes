@@ -15,13 +15,15 @@ Obsidian 插件还支持可选的自动标签。配置模型并开启该功能�
 
 **让 Codex 帮你安装。** 可以直接把这句话发给 Codex：
 
-> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记，把摘录保存到本地文件夹。
+> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记，把摘录保存到文稿里的「划线笔记」文件夹。
+
+也想用 Obsidian 回顾时，可以在同一句后加上「并安装配套 Obsidian 插件，用 Obsidian 打开同一文件夹里的卡片盒」。如果 Chrome 已装好，只需说「继续为刚才的笔记文件夹安装 Obsidian 插件，并打开卡片盒」。
 
 **手动安装**
 
 1. **安装 Chrome 扩展。** 下载上方 Chrome ZIP，将它解压到长期保留的文件夹，例如「应用工具/划线笔记扩展」。在地址栏打开 `chrome://extensions`，开启「开发者模式」，点击「加载已解压的扩展程序」，选择解压后能直接看到 `manifest.json` 的文件夹。将扩展固定到工具栏，并保留这个文件夹。
 2. **保存到本地文件夹。** 打开扩展「选项」→「选择笔记文件夹」。在系统窗口中新建「划线笔记」，或选一个已有文件夹并允许读写。在网页上划线并保存批注，点击「立即同步笔记」，即可在所选目录的 `Reading/Cards/` 中打开对应的 Markdown 文件。到这里就可以日常使用了。
-3. **可选：用 Obsidian 看卡片。** 下载上方 Obsidian ZIP 并解压。在 Obsidian 中选择「打开本地仓库」（Open folder as vault），打开第 2 步选的笔记文件夹。进入「设置 → 第三方插件」，打开插件文件夹，把解压得到的 `noting` 文件夹放进去（最终位置为 `.obsidian/plugins/noting/main.js`）。重新打开仓库，在第三方插件列表启用「划线笔记 / Underline Notes」，再打开 `Reading/卡片盒.md`。
+3. **可选：用 Obsidian 看卡片。** 下载上方 Obsidian ZIP 并解压。在 Obsidian 中选择「打开本地仓库」（Open folder as vault），打开第 2 步选的笔记文件夹。进入「设置 → 第三方插件」，打开插件文件夹，把解压得到的 `noting` 文件夹放进去（最终位置为 `.obsidian/plugins/noting/main.js`）。退出仓库的限制模式（如已开启），刷新已安装插件列表，启用「划线笔记 / Underline Notes」，再打开 `Reading/卡片盒.md`。
 
 升级已有安装或使用自定义 Obsidian 配置目录时，请参见[本地安装指南](INSTALL.md)。
 
