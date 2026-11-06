@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>划线笔记 / Underline Notes · 本地与 Obsidian</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="options.html" aria-label="划线笔记 / Underline Notes"><span class="brand-mark" aria-hidden="true">U</span><span class="brand-name">划线笔记<small> / Underline Notes</small></span></a>
+      <div class="rail-copy">读过的好句子，<br>留下来的想法。</div>
+      <nav><a href="#connection" class="active">本地与 Obsidian</a><a href="#reading">阅读记录</a><a href="#backup">备份与恢复</a></nav>
+      <div class="rail-bottom"><span class="dot"></span> 本地优先 <span>v0.2</span></div>
+    </aside>
+    <main>
+      <header class="page-header"><h1>本地与 Obsidian</h1><p>管理笔记双向同步、阅读记录和备份。</p></header>
+      <div id="notice" role="status" hidden></div>
+      <section id="connection" class="connection card">
+        <div class="section-title"><div><h2>连接你的 Obsidian</h2><p>选择仓库文件夹，资料会保存在其中的 <code>Reading/</code>。</p></div><span class="pill" id="connection-state">尚未连接</span></div>
+        <div class="connection-flow"><div class="flow-node"><span class="app-icon chrome-icon">↗</span><div><strong>Chrome</strong><span>划线 · 批注 · 阅读</span></div></div><span class="flow-line">↔</span><div class="flow-node"><span class="app-icon folder-icon">▤</span><div><strong>Reading/</strong><span>Markdown + JSON</span></div></div><span class="flow-line">↔</span><div class="flow-node"><span class="app-icon obsidian-icon">◈</span><div><strong>Obsidian</strong><span>编辑 · 关联 · 整理</span></div></div></div>
+        <div class="actions"><button class="primary" id="choose-directory">选择 Obsidian 仓库</button><button id="authorize" hidden>重新授权</button><button id="flush">立即同步笔记</button><a class="button" id="open-obsidian" hidden>打开卡片盒 ↗</a></div>
+        <p class="hint" id="folder-name">你也可以选择普通文件夹，之后再用 Obsidian 打开。</p>
+        <div class="stats"><div><strong id="article-count">0</strong><span>篇文章</span></div><div><strong id="highlight-count">0</strong><span>条划线</span></div><div><strong id="pending-count">0</strong><span>项待写入</span></div><div class="sync-status"><span class="dot"></span><span id="sync-status">划线和笔记先保存在浏览器本地</span></div></div>
+        <div id="sync-error" role="alert" hidden></div>
+      </section>
+      <form id="settings-form">
+        <section class="card" id="reading">
+          <div class="section-title"><div><h2>阅读记录</h2><p>把读过的文章，整理为 Obsidian 中的每日阅读日志。</p></div></div>
+          <label class="toggle-row"><span><strong>自动记录阅读</strong><small>文章页在前台活跃约 15 秒后收录，闲置 60 秒暂停计时。</small></span><input type="checkbox" id="record-history" role="switch"><span class="switch" aria-hidden="true"></span></label>
+          <label class="field" for="excluded-domains">排除的网站<span>每行一个域名，也会排除它的子域名。划线和阅读记录都会停用。</span></label>
+          <textarea id="excluded-domains" rows="3" placeholder="mail.google.com&#10;example.com"></textarea>
+          <div class="field-row"><div><label class="field" for="vault-name">Obsidian 仓库名称<span>用于“在 Obsidian 中打开”，与 Obsidian 显示的名称一致。</span></label><input type="text" id="vault-name" placeholder="例如：My Notes" maxlength="200"></div><button class="primary" type="submit">保存设置</button></div>
+        </section>
+      </form>
+      <section class="card" id="backup">
+        <div class="section-title"><div><h2>你的资料，随时带走</h2><p>备份包含浏览器收集的正文、划线、笔记和阅读会话。恢复时按 ID 合并，保留较新版本。</p></div></div>
+        <div class="actions"><button id="export-backup">下载浏览器资料备份</button><button id="import-backup">导入备份</button><button id="restore-directory">从已连接文件夹恢复</button><input id="backup-file" type="file" accept="application/json,.json" hidden></div>
+        <p class="hint">Obsidian 中补写的“延伸思考”请随仓库一起备份。卸载扩展会清除浏览器内的数据。</p>
+      </section>
+      <footer class="page-footer"><p>每条划线和文章笔记写入 <code>Cards/</code>，正文写入 <code>Articles/</code>。卡片盒和每日回顾会直接展开卡片。</p><p>在 Obsidian 中点击“编辑笔记”修改“我的批注”，浏览器运行且文件夹授权有效时会自动同步，通常每分钟检查一次，也可立即同步。两边修改冲突时保留版本并提示合并。摘录和来源是引用材料；旧“延伸思考”和随手记仍仅保存在 Obsidian。</p></footer>
+    </main>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

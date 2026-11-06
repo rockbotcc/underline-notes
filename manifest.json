@@ -1,0 +1,9 @@
+{
+  "id": "noting",
+  "name": "划线笔记 / Underline Notes",
+  "version": "0.2.0",
+  "minAppVersion": "1.6.0",
+  "description": "在卡片流中回顾网页摘录、补写想法和阅读本地全文。",
+  "author": "Underline Notes",
+  "isDesktopOnly": false
+}
