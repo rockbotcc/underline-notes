@@ -8,9 +8,9 @@ Chrome 扩展「划线笔记 / Underline Notes」负责采集；同名配套 Obs
 
 可以直接从 GitHub 源码安装。准备桌面版 Chrome 120+、Obsidian 1.6+ 和 Node.js 22.18+（含 npm）。只需要网页划线和批注时，安装 Chrome 扩展即可。
 
-**让 Codex 帮你安装**：把这句话发给 Codex，并把最后的路径换成自己的 Obsidian 仓库路径。
+**让 Codex 帮你安装。** 直接复制下面这句话即可。Codex 会查找你在 Obsidian 打开过的笔记库。如果有多个，按名称选一个就行。
 
-> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 在本机安装划线笔记的 Chrome 和 Obsidian 插件。我的 Obsidian 仓库路径是「……」。
+> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 帮我安装划线笔记的 Chrome 和 Obsidian 插件，并连接我的笔记库。
 
 **自己安装**：在一个准备长期保留的位置执行以下命令。如果已经下载并解压源码，直接在含有 `package.json` 的目录执行最后两行即可。
 
