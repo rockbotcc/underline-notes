@@ -1,11 +1,16 @@
 import { Readability } from '@mozilla/readability';
 import TurndownService from 'turndown';
 
-export function captureArticle(source: Document): { bodyText: string; bodyMarkdown: string } {
+import { publicationDate } from '../../shared/model';
+
+export function captureArticle(source: Document): { bodyText: string; bodyMarkdown: string; publishedDate?: string } {
   const clone = source.cloneNode(true) as Document;
   clone.querySelectorAll('[data-noting-root]').forEach(node => node.remove());
   const article = new Readability(clone).parse();
-  if (!article?.content) return { bodyText: '', bodyMarkdown: '' };
+  const publishedDate = publicationDate(article?.publishedTime)
+    || publicationDate(source.querySelector('meta[property="article:published_time"], meta[itemprop="datePublished"]')?.getAttribute('content'))
+    || publicationDate(source.querySelector('time[itemprop="datePublished"], article header time[datetime], time[pubdate]')?.getAttribute('datetime'));
+  if (!article?.content) return { bodyText: '', bodyMarkdown: '', publishedDate };
   const body = new DOMParser().parseFromString(article.content, 'text/html');
   body.querySelectorAll('script, style, iframe, form, input, button, svg, audio, video, img').forEach(node => node.remove());
   for (const link of body.querySelectorAll('a')) {
@@ -21,6 +26,7 @@ export function captureArticle(source: Document): { bodyText: string; bodyMarkdo
     .filter(node => !node.parentElement?.closest('pre, li, blockquote'))
     .map(node => node.textContent?.trim()).filter(Boolean);
   return {
+    publishedDate,
     bodyText: (paragraphs.join('\n\n') || article.textContent || '').slice(0, 1000000),
     bodyMarkdown: converter.turndown(body.body).slice(0, 1000000),
   };

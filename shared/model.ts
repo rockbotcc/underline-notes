@@ -45,6 +45,8 @@ export interface Article {
   pageNote: string;
   pageNoteCard?: boolean;
   bodyText: string;
+  publishedDate?: string;
+  faviconUrl?: string;
   bodyMarkdown?: string;
   bodyCapturedAt?: string;
   annotations: Annotation[];
@@ -75,10 +77,20 @@ export const DEFAULT_SETTINGS: Settings = {
   vaultFolder: 'Reading',
 };
 
+export function publicationDate(value: unknown): string | undefined {
+  if (typeof value !== 'string') return;
+  const match = /^(\d{4}-\d{2}-\d{2})(?:$|[T\s]\d{2}:)/.exec(value.trim());
+  if (!match) return;
+  const day = new Date(match[1] + 'T00:00:00Z');
+  if (Number.isFinite(day.getTime()) && day.toISOString().startsWith(match[1])) return match[1];
+}
+
 export interface PageInfo {
   url: string;
   title: string;
   bodyText?: string;
+  publishedDate?: string;
+  faviconUrl?: string;
   bodyMarkdown?: string;
 }
 

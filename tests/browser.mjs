@@ -63,9 +63,12 @@ async function vaultFiles(page, edit) {
       const name = parts.pop();
       let directory = root;
       for (const part of parts) directory = await directory.getDirectoryHandle(part);
-      const writable = await (await directory.getFileHandle(name)).createWritable();
-      await writable.write(edit.text);
-      await writable.close();
+      if (edit.remove) await directory.removeEntry(name);
+      else {
+        const writable = await (await directory.getFileHandle(name, { create: Boolean(edit.create) })).createWritable();
+        await writable.write(edit.text);
+        await writable.close();
+      }
     }
     const files = {};
     async function walk(directory, prefix = '') {
@@ -482,6 +485,28 @@ try {
   await call(restoredOptions, { type: 'SAVE_SETTINGS', settings: restoredSettings });
   await restored.waitForFunction(() => CSS.highlights.get('noting-yellow')?.size === 2);
   console.log('PASS 网站排除与重新启用');
+  const siblingPath = Object.keys(await vaultFiles(restoredOptions)).find(file => file.startsWith('Cards/') && file !== pageCardPath && file !== personalPath);
+  assert.ok(siblingPath);
+  for (const path of [siblingPath, pageCardPath]) {
+    await vaultFiles(restoredOptions, { path: path + '.noting-delete', create: true, text: '' });
+  }
+  await call(restoredOptions, { type: 'FLUSH' });
+  assert.equal((await call(restoredOptions, { type: 'BACKUP' })).articles[0].annotations.length, 2);
+  for (const path of [siblingPath, pageCardPath]) await vaultFiles(restoredOptions, { path, remove: true });
+  await call(restoredOptions, { type: 'FLUSH' });
+  await restored.waitForFunction(() => CSS.highlights.get('noting-yellow')?.size === 1);
+  await call(restoredOptions, { type: 'REQUEUE' });
+  await call(restoredOptions, { type: 'FLUSH' });
+  const syncedFiles = await vaultFiles(restoredOptions);
+  assert.ok(syncedFiles[personalPath].includes(thoughts));
+  for (const path of [siblingPath, pageCardPath]) {
+    assert.ok(!(path in syncedFiles));
+    assert.ok(!(path + '.noting-delete' in syncedFiles));
+  }
+  const afterCardDelete = (await call(restoredOptions, { type: 'BACKUP' })).articles[0];
+  assert.deepEqual(afterCardDelete.annotations.map(item => item.id), [annotationId]);
+  assert.equal(afterCardDelete.pageNote, '');
+  console.log('PASS Obsidian 删除单条划线和文章笔记，浏览器高亮和重新导出一致');
   await worker.evaluate(async () => {
     const tab = (await chrome.tabs.query({})).find(tab => tab.url?.includes('/article'));
     await chrome.tabs.sendMessage(tab.id, { type: 'NOTING_TOGGLE' });
@@ -496,9 +521,7 @@ try {
   assert.equal(afterDelete.sessions.length, 0);
   await call(restoredOptions, { type: 'FLUSH' });
   const remainingCards = Object.entries(await vaultFiles(restoredOptions)).filter(([file]) => file.startsWith('Cards/'));
-  assert.equal(remainingCards.length, 1, '删除原记录只保留有手写思考的卡片');
-  assert.equal(remainingCards[0][0], personalPath);
-  assert.ok(remainingCards[0][1].includes(thoughts));
+  assert.equal(remainingCards.length, 0, '删除本页记录后也移除有手写思考的卡片');
   console.log('PASS 删除联动与旧备份防复活');
   assert.deepEqual(errors, [], '页面不得出现未捕获异常');
   console.log('ALL BROWSER TESTS PASSED');

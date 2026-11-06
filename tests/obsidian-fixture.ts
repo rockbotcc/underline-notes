@@ -15,6 +15,10 @@ const handles = new Map(Object.keys(files).map(path => [path, new TFile(path)]))
 const save = () => localStorage.setItem('vault-files', JSON.stringify(files));
 const changed = (file: TFile) => { file.stat.mtime = Date.now(); save(); for (const fn of listeners.modify || []) fn(file); };
 const vault = {
+  adapter: {
+    write: async (path: string, text: string) => { files[path] = text; save(); },
+    remove: async (path: string) => { delete files[path]; save(); },
+  },
   getMarkdownFiles: () => [...handles.values()].filter(file => file.path.endsWith('.md')),
   getAbstractFileByPath: (path: string) => handles.get(path),
   read: async (file: TFile) => files[file.path], cachedRead: async (file: TFile) => files[file.path],
@@ -27,6 +31,16 @@ const vault = {
   on: (event: string, listener: Function) => { (listeners[event] ||= []).push(listener); },
 };
 const app: any = { vault, workspace: { on() {}, onLayoutReady(callback: () => void) { callback(); }, getLeavesOfType: () => root.view ? [{ view: root.view }] : [], openLinkText: async (path: string) => { root.openedPath = path; } } };
+app.fileManager = {
+  promptForDeletion: async (file: TFile) => {
+    if (!window.confirm(file.path)) return false;
+    delete files[file.path];
+    handles.delete(file.path);
+    save();
+    for (const listener of listeners.delete || []) listener(file);
+    return true;
+  },
+};
 root.files = files;
 root.modify = (id: string, text: string) => { const file = handles.get('Reading/Cards/Local/' + id + '.md')!; files[file.path] = localMemo(text, id, '2026-11-05T08:00:00Z'); changed(file); };
 root.rename = (id: string) => { const oldPath = 'Reading/Cards/Local/' + id + '.md', next = 'Reading/Cards/Local/renamed-' + id + '.md'; files[next] = files[oldPath]; delete files[oldPath]; handles.delete(oldPath); const file = new TFile(next); handles.set(next, file); save(); (listeners.rename || []).forEach(fn => fn(file, oldPath)); };

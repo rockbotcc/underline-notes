@@ -5,7 +5,7 @@ import { splitTags, manualTags, matchesTag } from './tags.ts';
 
 export const MARKER = '<!-- noting:personal -->';
 export interface Memo {
-  path: string; id: string; articleId: string; title: string; source: string; url: string;
+  path: string; id: string; articleId: string; title: string; source: string; url: string; faviconUrl?: string; publishedDate?: string;
   createdAt: string; updatedAt: string; quote: string; note: string; context: string; personal: string; tail: string; tags: string[];
   aiTags?: string[]; tagVersion?: string;
   image?: string;
@@ -90,7 +90,7 @@ export function parseMemo(path: string, text: string, metadata: Record<string, u
   const context = unquote(section(text, 'context'));
   const automatic = splitTags(tail);
   const tags = [...new Set([...manualTags({ note, personal }), ...automatic.tags])];
-  return { path, id: get('card_id'), articleId: get('article_id'), title: get('title'), source: get('source_title'), url: get('source_url'), createdAt: get('created_at'), updatedAt: get('updated_at') || get('created_at'), quote, note, context, personal, tail, tags, aiTags: automatic.tags, tagVersion: automatic.version, image: section(text, 'image') || undefined };
+  return { path, id: get('card_id'), articleId: get('article_id'), title: get('title'), source: get('source_title'), url: get('source_url'), faviconUrl: get('source_favicon'), publishedDate: get('published_date'), createdAt: get('created_at'), updatedAt: get('updated_at') || get('created_at'), quote, note, context, personal, tail, tags, aiTags: automatic.tags, tagVersion: automatic.version, image: section(text, 'image') || undefined };
 }
 export function updateThoughts(current: string, expectedTail: string, next: string): string {
   const index = current.indexOf(MARKER);

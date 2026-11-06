@@ -63,6 +63,7 @@ let selectionAnchor: Anchor | null = null;
 let selectionRect: DOMRect | null = null;
 let ranges = new Map<string, Range>();
 let cachedBody: string | undefined;
+let publishedDate: string | undefined;
 let cachedMarkdown: string | undefined;
 let bodyAttempted = false;
 let pageDraft: string | undefined;
@@ -188,9 +189,10 @@ function page(withBody = false): PageInfo {
       const captured = captureArticle(document);
       cachedBody = captured.bodyText;
       cachedMarkdown = captured.bodyMarkdown;
+      publishedDate = captured.publishedDate;
     } catch { cachedBody = ''; cachedMarkdown = ''; }
   }
-  return { url: currentUrl, title: document.title.slice(0, 2000) || new URL(currentUrl).hostname, bodyText: withBody ? cachedBody : '', bodyMarkdown: withBody ? cachedMarkdown : '' };
+  return { url: currentUrl, publishedDate, title: document.title.slice(0, 2000) || new URL(currentUrl).hostname, bodyText: withBody ? cachedBody : '', bodyMarkdown: withBody ? cachedMarkdown : '' };
 }
 
 async function refresh() {
@@ -307,7 +309,8 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
   const actions = element('div', 'actions');
   if (article?.annotations.some(item => item.id === annotation.id)) {
     actions.append(button(annotation.image ? '删除图片笔记' : '删除笔记', async () => {
-      if (!window.confirm(annotation.image ? '确定删除这条图片笔记吗？此操作无法撤销。' : '确定删除这条笔记及对应的划线吗？此操作无法撤销。')) return;
+      const target = annotation.image ? '这条图片笔记' : '这条笔记及对应的划线';
+      if (!window.confirm('确定删除' + target + '吗？同步时也会删除 Obsidian 中对应的卡片，包括卡片里补写的内容。')) return;
       article = await rpc<Article>({ type: 'DELETE_ANNOTATION', page: page(), id: annotation.id });
       editorDraft = false;
       closeEditor();
@@ -441,7 +444,7 @@ function renderPanel(focusNote = false) {
       main.append(card);
     }
     if (article) main.append(button('移除本页记录', async () => {
-      if (!window.confirm('移除本页划线、笔记和阅读记录？已连接文件夹中的生成文件也会更新。')) return;
+      if (!window.confirm('移除本页划线、笔记和阅读记录？同步时也会删除 Obsidian 中本页的笔记卡片，包括卡片里补写的内容。')) return;
       await rpc({ type: 'DELETE_ARTICLE', page: page() });
       article = null;
       pageDraft = undefined;
@@ -593,6 +596,7 @@ const ticker = setInterval(async () => {
     pageEditing = false;
     cachedBody = undefined;
     cachedMarkdown = undefined;
+    publishedDate = undefined;
     bodyAttempted = false;
     toolbar.hidden = true;
     imageToolbar.hidden = true;

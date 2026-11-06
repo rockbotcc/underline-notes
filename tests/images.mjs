@@ -119,10 +119,32 @@ try {
   assert.deepEqual((await call(options, { type: 'BACKUP' })).articles[0].annotations, backup.articles[0].annotations);
   await mkdir('test-results', { recursive: true });
   await page.screenshot({ path: 'test-results/image-notes.png' });
+  await options.evaluate(async ([articleId, annotationId]) => {
+    const vault = await (await navigator.storage.getDirectory()).getDirectoryHandle('image-vault');
+    const folder = await (await vault.getDirectoryHandle('Cards')).getDirectoryHandle(articleId);
+    for await (const [name, file] of folder.entries()) {
+      if (!name.endsWith('--' + annotationId + '.md')) continue;
+      const text = await (await file.getFile()).text();
+      const writer = await file.createWritable();
+      await writer.write(text + '\n在 Obsidian 补写的内容');
+      await writer.close();
+      return;
+    }
+    throw new Error('未找到目标测试卡片');
+  }, [article.id, article.annotations[0].id]);
   await card.getByRole('button', { name: '编辑笔记', exact: true }).click();
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: '删除图片笔记', exact: true }).click();
   await card.waitFor({ state: 'hidden' });
+  await call(options, { type: 'REQUEUE' });
+  await call(options, { type: 'FLUSH' });
+  const remaining = await options.evaluate(async id => {
+    const vault = await (await navigator.storage.getDirectory()).getDirectoryHandle('image-vault');
+    const folder = await (await vault.getDirectoryHandle('Cards')).getDirectoryHandle(id);
+    return Array.fromAsync(folder.keys());
+  }, article.id);
+  assert.equal(remaining.length, 1);
+  assert.ok(remaining[0].endsWith('--' + article.annotations[1].id + '.md'));
   assert.equal((await call(options, { type: 'BACKUP' })).articles[0].annotations.length, 1);
   await page.getByRole('button', { name: '关闭侧边栏', exact: true }).click();
   await hover('#temporary');

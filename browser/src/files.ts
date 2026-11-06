@@ -1,6 +1,6 @@
-import { database, getDirectory } from './db';
+import { database, getDirectory, saveArticle } from './db';
 import { articleCards, articleMarkdown, dayMarkdown, indexMarkdown, managedCardPart, personalCardPart, LEGACY_PERSONAL_TEMPLATE, imageAttachmentPath } from '../../shared/markdown';
-import { cardStructure, mergeNote, readCardNote } from '../../shared/note-sync';
+import { cardStructure, DELETE_MARKER_SUFFIX, mergeNote, readCardNote } from '../../shared/note-sync';
 
 export type DirectoryHandle = FileSystemDirectoryHandle & {
   queryPermission(options: { mode: 'readwrite' }): Promise<PermissionState>;
@@ -20,8 +20,16 @@ async function parentDirectory(root: FileSystemDirectoryHandle, path: string) {
   return { directory, name };
 }
 
+async function hasDeleteMarker(directory: FileSystemDirectoryHandle, name: string) {
+  try { await directory.getFileHandle(name + DELETE_MARKER_SUFFIX); return true; }
+  catch (error) {
+    if (error instanceof DOMException && error.name === 'NotFoundError') return false;
+    throw error;
+  }
+}
+
 // Cards own only the prefix; the personal suffix belongs to the Obsidian user.
-async function writeFile(root: FileSystemDirectoryHandle, path: string, text: string | null) {
+async function writeFile(root: FileSystemDirectoryHandle, path: string, text: string | null, preserveThoughts = false) {
   const db = await database;
   const { directory, name } = await parentDirectory(root, path);
   const record = await db.get('files', path);
@@ -46,14 +54,19 @@ async function writeFile(root: FileSystemDirectoryHandle, path: string, text: st
     throw new Error(`文件存在外部修改：${path}。请将修改移到独立笔记，再移走此文件并重试。`);
   }
   if (text === null) {
-    // A card with handwritten thoughts becomes an independent note on deletion.
-    const tail = card && current !== undefined ? personalCardPart(current).trim() : '';
+    // A renamed export may still have handwritten content at its old path.
+    const tail = preserveThoughts && current !== undefined ? personalCardPart(current).trim() : '';
     const hasThoughts = tail && tail !== LEGACY_PERSONAL_TEMPLATE;
-    if (handle && !hasThoughts) await directory.removeEntry(name);
+    if (handle && !hasThoughts) {
+      if (await (await handle.getFile()).text() !== current) throw new Error('文件刚刚有新的修改：' + path + '。下次同步会重试。');
+      await directory.removeEntry(name);
+    }
+    if (card && await hasDeleteMarker(directory, name)) await directory.removeEntry(name + DELETE_MARKER_SUFFIX);
     await db.delete('files', path);
     return;
   }
   if (card && current !== undefined) text = managed(text) + personalCardPart(current);
+  if (card && !handle && await hasDeleteMarker(directory, name)) throw new Error('卡片删除等待同步：' + path);
   handle ??= await directory.getFileHandle(name, { create: true });
   const writable = await handle.createWritable();
   try {
@@ -96,13 +109,24 @@ async function pullNotes(root: FileSystemDirectoryHandle): Promise<Set<string>> 
     if (!match) continue;
     const [, articleId, cardId] = match;
     try {
+      const parent = await parentDirectory(root, record.path);
       let file: FileSystemFileHandle;
       try {
-        const parent = await parentDirectory(root, record.path);
         file = await parent.directory.getFileHandle(parent.name);
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'NotFoundError') continue;
-        throw error;
+        if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error;
+        if (!await hasDeleteMarker(parent.directory, parent.name)) continue;
+        const tx = db.transaction(['articles', 'sessions', 'pending'], 'readwrite');
+        const article = await tx.objectStore('articles').get(articleId);
+        if (article && (article.annotations.some(item => item.id === cardId) ||
+          (cardId === articleId + '-note' && (article.pageNote || article.pageNoteCard)))) {
+          if (cardId === articleId + '-note') { article.pageNote = ''; article.pageNoteCard = false; }
+          else article.annotations = article.annotations.filter(item => item.id !== cardId);
+          await saveArticle(tx, article);
+          changed.add(article.url);
+        }
+        await tx.done;
+        continue;
       }
       const current = await (await file.getFile()).text();
       const managed = managedCardPart(current);
@@ -222,7 +246,10 @@ async function flush() {
         for (const card of cards) await writeFile(directory, card.path, card.markdown);
         const paths = new Set(cards.map(card => card.path));
         for (const path of await db.getAllKeys('files')) {
-          if (path.startsWith(`Cards/${article.id}/`) && !paths.has(path)) await writeFile(directory, path, null);
+          if (path.startsWith(`Cards/${article.id}/`) && !paths.has(path)) {
+            const renamed = cards.some(card => path.endsWith('--' + card.id + '.md'));
+            await writeFile(directory, path, null, renamed);
+          }
         }
         await writeFile(directory, `Data/articles/${article.id}.json`, JSON.stringify({ schemaVersion: 1, article }, null, 2) + '\n');
         await writeFile(directory, `Articles/${article.id}.md`, article.deletedAt ? null : articleMarkdown(article, sessions));

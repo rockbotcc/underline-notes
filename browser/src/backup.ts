@@ -1,4 +1,4 @@
-import { articleId, COLORS, normalizeUrl, checkedImage, type Article, type Backup, type Session } from '../../shared/model.ts';
+import { articleId, publicationDate, COLORS, normalizeUrl, checkedImage, type Article, type Backup, type Session } from '../../shared/model.ts';
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('备份结构无效');
@@ -56,7 +56,7 @@ export async function validateBackup(input: unknown): Promise<Backup> {
       };
     });
     articles.push({
-      id, url, hostname: new URL(url).hostname,
+      id, url, publishedDate: publicationDate(value.publishedDate), hostname: new URL(url).hostname,
       title: string(value.title, 2000), pageNote: string(value.pageNote, 100000), bodyText: string(value.bodyText),
       ...(value.pageNoteCard === true ? { pageNoteCard: true } : {}),
       ...(value.bodyMarkdown !== undefined ? { bodyMarkdown: string(value.bodyMarkdown) } : {}),

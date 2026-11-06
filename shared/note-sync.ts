@@ -3,6 +3,7 @@
 const START = '<!-- noting:note:start -->';
 const END = '<!-- noting:note:end -->';
 const PERSONAL = '<!-- noting:personal -->';
+export const DELETE_MARKER_SUFFIX = '.noting-delete';
 
 function noteRange(text: string): [number, number] | null {
   const boundary = text.indexOf(PERSONAL);

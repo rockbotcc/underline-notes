@@ -1,6 +1,6 @@
 import { App, Component, ItemView, MarkdownRenderer, Menu, Notice, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf, normalizePath, parseYaml, requestUrl, setIcon } from 'obsidian';
 import { filterMemos, filterSourceGroups, groupMemosBySource, localMemo, memoExcerpt, memoImage, parseMemo, reviewMemos, sourceKey, updateThoughts, type Memo, type SourceGroup } from './cards';
-import { updateCardNote } from '../shared/note-sync';
+import { DELETE_MARKER_SUFFIX, updateCardNote } from '../shared/note-sync';
 import { DEFAULT_AI, apiRequest, type AISettings, type Transport } from './ai';
 import type { Relation } from './relations';
 import type { Discussion } from './discussion';
@@ -168,7 +168,7 @@ class NotingSettings extends PluginSettingTab {
       for (const leaf of this.app.workspace.getLeavesOfType(VIEW)) if (leaf.view instanceof CardboxView) void leaf.view.refresh();
     }));
     this.containerEl.createEl('h2', { text: 'AI 自动标签' });
-    this.containerEl.createEl('p', { text: '保存后自动按“领域/主题”归类，优先复用已有标签，保留手写标签。模型收到当前卡片的标题、最多 1800 字批注、1800 字延伸思考、1200 字摘录、手写标签，以及仓库中最多 80 个已有二级标签名称，不发送其他卡片正文。' });
+    this.containerEl.createEl('p', { text: '保存后自动按项目、领域、收件箱或资源归类，优先复用已有标签，保留手写标签。模型收到当前卡片的标题、最多 1800 字批注、1800 字延伸思考、1200 字摘录、手写标签，以及仓库中最多 80 个已有 P.A.I.R. 标签名称，不发送其他卡片正文。' });
     const field = (key: 'baseUrl' | 'apiKey' | 'model', name: string, desc: string, placeholder: string) => {
       new Setting(this.containerEl).setName(name).setDesc(desc).addText(input => {
         input.setPlaceholder(placeholder).setValue(this.plugin.preferences.ai[key]);
@@ -187,7 +187,7 @@ class NotingSettings extends PluginSettingTab {
       if (!value) this.plugin.cancelPendingTags();
       try { await this.plugin.savePreferences(); } catch { new Notice('设置保存失败，请重试。'); }
     }));
-    new Setting(this.containerEl).setName('整理已有标签').setDesc('逐张调用模型，为旧卡片补标签，并将已有自动标签重新归为二级主题。保留手写标签和正文；可能产生模型费用，关闭自动标签可停止。').addButton(control => control.setButtonText('整理旧卡片标签').onClick(() => this.plugin.organizeTags()));
+    new Setting(this.containerEl).setName('整理已有标签').setDesc('逐张调用模型，为旧卡片补标签，并将已有自动标签按 P.A.I.R. 归类。保留手写标签和正文；可能产生模型费用，关闭自动标签可停止。').addButton(control => control.setButtonText('整理旧卡片标签').onClick(() => this.plugin.organizeTags()));
     new Setting(this.containerEl).setName('测试模型连接').setDesc('只发送测试短句，不发送笔记。').addButton(control => control.setButtonText('测试连接').onClick(async () => {
       control.setDisabled(true); control.setButtonText('测试中…');
       try { await this.plugin.testConnection(); new Notice('模型连接成功'); }
@@ -246,7 +246,7 @@ class CardboxView extends ItemView {
     this.composer.createEl('p', { text: '可以先用自己的话复述原文，再补充理解或评论。', cls: 'nt-muted' });
     const entry = this.composer.createEl('textarea', { attr: { placeholder: '读到的内容主要在说什么？也可以记下此刻的想法…', 'aria-label': '记录新想法', rows: '3' } });
     const tools = this.composer.createDiv({ cls: 'nt-composer-tools' });
-    tools.createSpan({ text: '配置 AI 后自动归类 · 也可写 #领域/主题', cls: 'nt-muted' });
+    tools.createSpan({ text: '配置 AI 后自动归类 · 也可写 #领域/写作', cls: 'nt-muted' });
     const saveNew = async () => {
       if (!entry.value.trim()) return;
       save.disabled = true;
@@ -382,7 +382,7 @@ class CardboxView extends ItemView {
     this.sidebar.createDiv({ text: '我的标签', cls: 'nt-label' });
     const tags = this.sidebar.createDiv({ cls: 'nt-tags-nav' });
     const tree = tagTree(this.memos);
-    if (!tree.length) tags.createEl('p', { text: '配置 AI 后，保存即自动归类。\n也可手写 #领域/主题。', cls: 'nt-muted' });
+    if (!tree.length) tags.createEl('p', { text: '配置 AI 后，保存即自动归类。\n也可手写 #领域/写作。', cls: 'nt-muted' });
     const renderTags = (parent: HTMLElement, branches: TagBranch[]) => {
       for (const { tag, count, children } of branches) {
         const row = parent.createDiv({ cls: 'nt-tag-row' });
@@ -454,9 +454,11 @@ class CardboxView extends ItemView {
     head.createEl('time', { text: date(memo.createdAt), attr: { datetime: memo.createdAt } });
     if (this.selectedSource && this.mode === 'sources') head.createSpan({ text: memo.image ? '图片笔记' : memo.quote ? '摘录与批注' : memoImage(memo) ? '图片笔记' : memo.articleId ? '文章笔记' : '随手记', cls: 'nt-record-kind' });
     const more = button(head, '更多操作', 'ellipsis', () => {
-      const menu = new Menu();
-      menu.addItem(item => item.setTitle(memo.articleId ? '编辑笔记' : '补写想法').setIcon('pencil-line').onClick(() => this.editMemo(memo, card)));
-      menu.addItem(item => item.setTitle('打开笔记').setIcon('arrow-up-right').onClick(() => void this.app.workspace.openLinkText(memo.path, '', true)));
+      // The macOS native menu drops the warning color on destructive actions.
+      const menu = new Menu().setUseNativeMenu(false);
+      menu.addItem(item => item.setTitle(memo.articleId ? '编辑' : '补写想法').setIcon('pencil-line').onClick(() => this.editMemo(memo, card)));
+      menu.addItem(item => item.setTitle('打开').setIcon('arrow-up-right').onClick(() => void this.app.workspace.openLinkText(memo.path, '', true)));
+      menu.addItem(item => item.setTitle('删除').setWarning(true).setIcon('trash-2').onClick(() => this.deleteMemo(memo)));
       more.setAttribute('aria-expanded', 'true');
       menu.onHide(() => more.setAttribute('aria-expanded', 'false'));
       const bounds = more.getBoundingClientRect();
@@ -497,7 +499,21 @@ class CardboxView extends ItemView {
     }
     if (!memo.note && !memo.quote && !memo.personal) card.createEl('p', { text: memo.title, cls: 'nt-thought' });
     if ((memo.articleId || memo.url) && !(this.mode === 'sources' && this.selectedSource)) {
-      button(card, memo.source || memo.url || '查看同源记录', 'library', () => this.openSource(sourceKey(memo)), 'nt-source');
+      const source = button(card, (memo.source || memo.url || '查看同源记录') + ' · ' + (memo.publishedDate || '未知日期'), '', () => this.openSource(sourceKey(memo)), 'nt-source');
+      if (URL.canParse(memo.url) && /^https?:\/\//i.test(memo.url)) {
+        const fallback = new URL('/favicon.ico', memo.url).href;
+        const captured = memo.faviconUrl || '';
+        const icon = source.ownerDocument.createElement('img');
+        icon.alt = '';
+        icon.loading = 'lazy';
+        icon.referrerPolicy = 'no-referrer';
+        icon.onerror = () => {
+          if (icon.src === fallback) icon.remove();
+          else icon.src = fallback;
+        };
+        icon.src = /^(?:https?:\/\/|data:image\/)/i.test(captured) ? captured : fallback;
+        source.prepend(icon);
+      }
     }
     card.createDiv({ cls: 'nt-tag-status', text: this.plugin.tagStatus.get(memo.id) || '', attr: { role: 'status' } });
     if (this.drafts.has(memo.id)) this.editMemo(memo, card, false);
@@ -517,7 +533,11 @@ class CardboxView extends ItemView {
     this.heading.closest('.nt-main')?.scrollTo({ top: 0 });
   }
   private sourceDomain(group: SourceGroup) {
-    try { return new URL(group.url).hostname; } catch { return group.key === 'local' ? '独立记录' : '来源地址不可用'; }
+    try {
+      const hostname = new URL(group.url).hostname;
+      const publishedDate = group.memos.find(memo => memo.publishedDate)?.publishedDate;
+      return hostname + ' · ' + (publishedDate || '未知日期');
+    } catch { return group.key === 'local' ? '独立记录' : '来源地址不可用'; }
   }
   private renderSources() {
     const groups = groupMemosBySource(this.memos);
@@ -564,6 +584,25 @@ class CardboxView extends ItemView {
       button(footer, '查看全部记录', 'arrow-right', () => this.openSource(group.key), 'nt-quiet');
     }
     if (filtered.length > this.pageSize) button(this.feed, '更多来源', 'chevron-down', () => { this.pageSize += 30; this.renderFeed(); }, 'nt-load-more');
+  }
+  private async deleteMemo(memo: Memo) {
+    try {
+      const file = this.app.vault.getAbstractFileByPath(memo.path);
+      if (!(file instanceof TFile)) throw new Error('卡片已被移动或删除。');
+      // Stage intent first. The browser consumes it only after the card is gone.
+      const marker = memo.articleId ? file.path + DELETE_MARKER_SUFFIX : undefined;
+      if (marker) await this.app.vault.adapter.write(marker, '');
+      try {
+        if (await this.app.fileManager.promptForDeletion(file)) {
+          this.drafts.delete(memo.id);
+          await this.refresh();
+        }
+      } finally {
+        if (marker && this.app.vault.getAbstractFileByPath(memo.path) === file) {
+          await this.app.vault.adapter.remove(marker);
+        }
+      }
+    } catch (error) { new Notice(error instanceof Error ? error.message : String(error)); }
   }
   private editMemo(memo: Memo, card: HTMLElement, focus = true) {
     if (card.querySelector('.nt-edit')) return;

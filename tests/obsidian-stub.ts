@@ -24,11 +24,13 @@ export class Menu {
   private hidden = () => {};
   private previous = document.activeElement as HTMLElement | null;
   constructor() { this.element = (document.body as any).createDiv({ attr: { role: 'menu' } }); }
+  setUseNativeMenu(_value: boolean) { return this; }
   addItem(callback: any) {
     const button = this.element.createEl('button', { attr: { role: 'menuitem' } });
     const item = {
       setTitle(value: string) { button.textContent = value; return item; },
       setIcon() { return item; },
+      setWarning(value: boolean) { button.classList.toggle('is-warning', value); return item; },
       onClick: (action: () => void) => { button.addEventListener('click', () => { this.hide(); action(); }); return item; },
     };
     callback(item); return this;

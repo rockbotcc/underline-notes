@@ -27,6 +27,15 @@ export async function dirty(tx: WriteTransaction, key: string) {
   await tx.objectStore('pending').put({ key, version: crypto.randomUUID() });
 }
 
+export async function saveArticle(tx: WriteTransaction, article: Article) {
+  article.updatedAt = new Date().toISOString();
+  await tx.objectStore('articles').put(article);
+  await dirty(tx, 'article:' + article.id);
+  await dirty(tx, 'index');
+  const visits = await tx.objectStore('sessions').index('articleId').getAll(article.id);
+  for (const day of new Set(visits.map(visit => visit.day))) await dirty(tx, 'day:' + day);
+}
+
 export async function getSettings(): Promise<Settings> {
   return { ...DEFAULT_SETTINGS, ...await (await database).get('meta', 'settings') as Partial<Settings> };
 }

@@ -1,7 +1,7 @@
-import { database, dirty, getDirectory, getSettings, type WriteTransaction } from './db';
+import { database, dirty, getDirectory, getSettings, saveArticle, type WriteTransaction } from './db';
 import { flushFiles } from './files';
 import { validateBackup } from './backup';
-import { articleId, normalizeUrl, isExcluded, checkedImage, COLORS, type Article, type PageInfo, type Annotation, type Session, type Settings } from '../../shared/model';
+import { articleId, publicationDate, normalizeUrl, isExcluded, checkedImage, COLORS, type Article, type PageInfo, type Annotation, type Session, type Settings } from '../../shared/model';
 
 function text(value: unknown, max: number): string {
   if (typeof value !== 'string' || value.length > max) throw new Error('输入内容无效或过长');
@@ -17,7 +17,7 @@ async function pageInfo(input: unknown, sender: chrome.runtime.MessageSender): P
   const value = input as PageInfo;
   const url = normalizeUrl(text(value?.url, 10000));
   if (!sender.tab || normalizeUrl(sender.tab.url || sender.url || '') !== url) throw new Error('页面已切换，请重试');
-  return { url, title: text(value.title, 2000), bodyText: value.bodyText ? text(value.bodyText, 1000000) : '', bodyMarkdown: value.bodyMarkdown ? text(value.bodyMarkdown, 1000000) : '' };
+  return { url, publishedDate: publicationDate(value.publishedDate), faviconUrl: sender.tab.favIconUrl, title: text(value.title, 2000), bodyText: value.bodyText ? text(value.bodyText, 1000000) : '', bodyMarkdown: value.bodyMarkdown ? text(value.bodyMarkdown, 1000000) : '' };
 }
 
 async function ensureArticle(tx: WriteTransaction, page: PageInfo, id: string): Promise<Article> {
@@ -25,23 +25,14 @@ async function ensureArticle(tx: WriteTransaction, page: PageInfo, id: string): 
   if (existing && !existing.deletedAt) {
     const upgradeSnapshot = !existing.bodyMarkdown && Boolean(page.bodyMarkdown);
     return {
-      ...existing, title: page.title || existing.title,
+      ...existing, publishedDate: page.publishedDate || existing.publishedDate, faviconUrl: page.faviconUrl || existing.faviconUrl, title: page.title || existing.title,
       bodyText: upgradeSnapshot ? page.bodyText || existing.bodyText : existing.bodyText || page.bodyText || '',
       bodyMarkdown: existing.bodyMarkdown || page.bodyMarkdown || '',
       bodyCapturedAt: upgradeSnapshot ? new Date().toISOString() : existing.bodyCapturedAt,
     };
   }
   const now = new Date().toISOString();
-  return { id, url: page.url, title: page.title || new URL(page.url).hostname, hostname: new URL(page.url).hostname, createdAt: now, updatedAt: now, pageNote: '', bodyText: page.bodyText || '', bodyMarkdown: page.bodyMarkdown || '', ...(page.bodyText ? { bodyCapturedAt: now } : {}), annotations: [] };
-}
-
-async function saveArticle(tx: WriteTransaction, article: Article) {
-  article.updatedAt = new Date().toISOString();
-  await tx.objectStore('articles').put(article);
-  await dirty(tx, 'article:' + article.id);
-  await dirty(tx, 'index');
-  const visits = await tx.objectStore('sessions').index('articleId').getAll(article.id);
-  for (const day of new Set(visits.map(visit => visit.day))) await dirty(tx, 'day:' + day);
+  return { id, url: page.url, publishedDate: page.publishedDate, faviconUrl: page.faviconUrl, title: page.title || new URL(page.url).hostname, hostname: new URL(page.url).hostname, createdAt: now, updatedAt: now, pageNote: '', bodyText: page.bodyText || '', bodyMarkdown: page.bodyMarkdown || '', ...(page.bodyText ? { bodyCapturedAt: now } : {}), annotations: [] };
 }
 
 function checkedAnnotation(input: unknown): Annotation {
@@ -118,6 +109,10 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
     }
     if (annotation) {
       const index = article.annotations.findIndex(item => item.id === annotation.id);
+      if (index === -1 && (message.annotation as Annotation).createdAt) {
+        tx.abort();
+        throw new Error('这条划线已删除，无法保存修改。');
+      }
       if (index === -1) article.annotations.push(annotation);
       else article.annotations[index] = { ...annotation, createdAt: article.annotations[index].createdAt };
     }

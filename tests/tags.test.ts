@@ -43,16 +43,16 @@ test('标签响应拒绝链接、标记注入、超限和保留命名空间', ()
 });
 
 test('标签请求仅包含当前卡片有限内容，排除手写重复标签', async () => {
-  const memo = parse(localMemo('思考 #技术/手写', 'a', '2026-11-05'));
+  const memo = parse(localMemo('思考 #领域/手写', 'a', '2026-11-05'));
   memo.context = '禁止发送的上下文'; memo.note = '批注'.repeat(2000); memo.quote = '摘录'.repeat(1000);
   const tags = await generateTags(memo, { ...DEFAULT_AI, baseUrl: 'https://model.example/v1', model: 'test' }, async request => {
     const body = JSON.parse(request.body), input = JSON.parse(body.messages[1].content);
     assert.equal(input.note.length, 1800); assert.equal(input.quote.length, 1200);
     assert.ok(!request.body.includes(memo.context));
-    assert.deepEqual(input.reusableTags, ['技术/AI']);
-    return { status: 200, text: JSON.stringify({ choices: [{ message: { content: '{"tags":["技术/手写","技术/ai"]}' } }] }) };
-  }, ['技术/AI']);
-  assert.deepEqual(tags, ['技术/AI']);
+    assert.deepEqual(input.reusableTags, ['领域/AI']);
+    return { status: 200, text: JSON.stringify({ choices: [{ message: { content: '{"tags":["领域/手写","领域/ai"]}' } }] }) };
+  }, ['领域/AI']);
+  assert.deepEqual(tags, ['领域/AI']);
 });
 
 test('父标签包含后代且卡片计数去重，兼容旧的多级标签', () => {
@@ -66,15 +66,15 @@ test('父标签包含后代且卡片计数去重，兼容旧的多级标签', ()
 });
 
 test('共享词表有界，排除系统标签和非法层级', () => {
-  const vocabulary = tagVocabulary([{ tags: ['noting/想法', '散标签', '领域/主题/细节', '技术/AI', '技术/ai', ...Array.from({ length: 100 }, (_, i) => '技术/主题' + i)] }]);
+  const vocabulary = tagVocabulary([{ tags: ['noting/想法', '散标签', '领域/主题/细节', '领域/AI', '领域/ai', ...Array.from({ length: 100 }, (_, i) => '领域/主题' + i)] }]);
   assert.equal(vocabulary.length, 80);
-  assert.equal(vocabulary[0], '技术/AI');
+  assert.equal(vocabulary[0], '领域/AI');
   assert.ok(!vocabulary.includes('noting/想法'));
 });
 
 test('自动生成拒绝散标签、三级标签、未知领域和过量标签', async () => {
   const memo = parse(localMemo('思考', 'a', '2026-11-05'));
-  for (const tags of [['散标签'], ['技术/AI/Agent'], ['随便新建领域/主题'], ['技术/A', '技术/B', '技术/C', '技术/D']]) {
-    await assert.rejects(generateTags(memo, { ...DEFAULT_AI, baseUrl: 'https://model.example/v1', model: 'test' }, async () => ({ status: 200, text: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ tags }) } }] }) })), /二级标签格式无效/);
+  for (const tags of [['散标签'], ['技术/AI'], ['收件箱/待整理'], ['收件箱', '领域/写作'], ['领域/AI/Agent'], ['随便新建领域/主题'], ['领域/A', '领域/B', '领域/C', '领域/D']]) {
+    await assert.rejects(generateTags(memo, { ...DEFAULT_AI, baseUrl: 'https://model.example/v1', model: 'test' }, async () => ({ status: 200, text: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ tags }) } }] }) })), /标签格式无效/);
   }
 });

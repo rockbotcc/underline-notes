@@ -70,6 +70,8 @@ export function articleCards(article: Article): Card[] {
       '---', 'schema_version: 2', 'card_id: ' + id, 'article_id: ' + article.id,
       'title: ' + JSON.stringify(title), 'aliases: [' + JSON.stringify(title) + ']',
       'source_title: ' + JSON.stringify(article.title), 'source_url: ' + JSON.stringify(article.url),
+      ...(article.publishedDate ? ['published_date: ' + JSON.stringify(article.publishedDate)] : []),
+      ...(article.faviconUrl ? ['source_favicon: ' + JSON.stringify(article.faviconUrl)] : []),
       'created_at: ' + createdAt, 'updated_at: ' + updatedAt, 'tags: [noting/' + (annotation ? '摘录' : '读后笔记') + ']',
       '---', '', '# ' + escapeMarkdown(title), '',
     ];
@@ -83,7 +85,7 @@ export function articleCards(article: Article): Card[] {
     const context = annotation && !annotation.image ? annotationContext(article, annotation) : '';
     if (context && context !== annotation?.anchor.exact) lines.push('<!-- noting:context:start -->', '> [!abstract]- 原文上下文', quote(context), '<!-- noting:context:end -->', '');
     lines.push('## 来源', '', fileLink(article.title + ' · 本地全文', '../../Articles/' + article.id + '.md#保存的正文'), '',
-      escapeMarkdown(article.hostname) + ' · ' + createdAt.slice(0, 10) + ' · ' + fileLink('网页来源', article.url), '');
+      escapeMarkdown(article.hostname) + ' · ' + (article.publishedDate || '未知日期') + ' · ' + fileLink('网页来源', article.url), '');
     const siblings = definitions.filter(item => item.id !== id);
     if (siblings.length) lines.push('## 同篇卡片', '', ...siblings.map(item => '- ' + fileLink(item.title, cardFileName(item.title, item.id))), '');
     const generated = lines.join('\n').replaceAll(PERSONAL_MARKER, '&lt;!-- noting:personal --&gt;');
