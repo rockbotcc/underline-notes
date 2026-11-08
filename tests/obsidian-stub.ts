@@ -106,7 +106,15 @@ export class Setting {
 export const MarkdownRenderer = { async render(_app: any, text: string, element: HTMLElement) {
   if (await root.renderMarkdown?.(text, element)) return;
   for (const paragraph of text.split(/\n\s*\n/)) {
-    const p = document.createElement('p'); p.textContent = paragraph; element.append(p);
+    const p = document.createElement('p');
+    let offset = 0;
+    for (const match of paragraph.matchAll(/(?:^|\s)(#[\p{L}\p{N}_/-]+)/gu)) {
+      const start = match.index! + match[0].length - match[1].length;
+      p.append(paragraph.slice(offset, start));
+      const link = document.createElement('a'); link.className = 'tag'; link.href = match[1]; link.textContent = match[1]; p.append(link);
+      offset = start + match[1].length;
+    }
+    p.append(paragraph.slice(offset)); element.append(p);
   }
 } };
 export function normalizePath(path: string) { return path.replace(/\/{2,}/g, '/').replace(/\/$/, ''); }

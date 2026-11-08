@@ -243,10 +243,9 @@ class CardboxView extends ItemView {
     const input = search.createEl('input', { type: 'search', attr: { placeholder: '搜索想法、摘录、文章…', 'aria-label': '搜索卡片' } });
     input.addEventListener('input', () => { this.query = input.value; this.reviewIndex = 0; this.pageSize = 30; this.renderFeed(); });
     this.composer = main.createDiv({ cls: 'nt-composer' });
-    this.composer.createEl('p', { text: '可以先用自己的话复述原文，再补充理解或评论。', cls: 'nt-muted' });
-    const entry = this.composer.createEl('textarea', { attr: { placeholder: '读到的内容主要在说什么？也可以记下此刻的想法…', 'aria-label': '记录新想法', rows: '3' } });
+    const entry = this.composer.createEl('textarea', { attr: { placeholder: '记下此刻的想法...', 'aria-label': '记录新想法', rows: '3' } });
     const tools = this.composer.createDiv({ cls: 'nt-composer-tools' });
-    tools.createSpan({ text: '配置 AI 后自动归类 · 也可写 #领域/写作', cls: 'nt-muted' });
+    tools.createSpan({ text: '配置 AI 后自动为笔记添加标签 · 通过 # 添加标签', cls: 'nt-muted' });
     const saveNew = async () => {
       if (!entry.value.trim()) return;
       save.disabled = true;
@@ -264,7 +263,7 @@ class CardboxView extends ItemView {
       } catch (error) { new Notice('保存失败：' + String(error)); }
       finally { save.disabled = false; }
     };
-    const save = button(tools, '记录', 'arrow-up', () => void saveNew(), 'nt-primary');
+    const save = button(tools, '记录', '', () => void saveNew(), 'nt-primary');
     entry.addEventListener('keydown', event => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); void saveNew(); } });
     this.feed = main.createDiv({ cls: 'nt-feed', attr: { 'aria-live': 'polite' } });
     this.drawer = this.shell.createEl('aside', { cls: 'nt-drawer', attr: { 'aria-label': '本地阅读', hidden: '' } });
@@ -376,7 +375,7 @@ class CardboxView extends ItemView {
     }
     this.renderHeatmap();
     const nav = this.sidebar.createEl('nav');
-    for (const [mode, label, icon] of [['all', '全部卡片', 'layers'], ['sources', '按来源', 'library'], ['inbox', '待消化', 'inbox'], ['review', '每日回顾', 'sparkles'], ['history', '阅读足迹', 'book-open']]) {
+    for (const [mode, label, icon] of [['all', '全部笔记', 'layers'], ['sources', '按来源', 'library'], ['inbox', '待消化', 'inbox'], ['review', '每日回顾', 'sparkles'], ['history', '阅读足迹', 'book-open']]) {
       button(nav, label, icon, () => { this.mode = mode; this.selectedSource = ''; this.tag = ''; this.reviewIndex = 0; this.pageSize = 30; this.renderNavigation(); this.renderFeed(); }, mode === this.mode && !this.tag ? 'is-active' : '');
     }
     this.sidebar.createDiv({ text: '我的标签', cls: 'nt-label' });
@@ -409,17 +408,17 @@ class CardboxView extends ItemView {
     this.feed.empty();
     this.composer.hidden = ['review', 'history', 'sources', 'day'].includes(this.mode);
     this.search.hidden = this.mode === 'sources' && !!this.selectedSource;
-    const titles: Record<string, string> = { all: '我的卡片', sources: '按来源', inbox: '待消化', review: '与过去的想法重逢', history: '阅读足迹' };
+    const titles: Record<string, string> = { all: '全部笔记', sources: '按来源', inbox: '待消化', review: '与过去的想法重逢', history: '阅读足迹' };
     const byDay = this.mode === 'day';
     this.heading.setText(byDay ? new Date(this.selectedDay).toLocaleDateString('zh-CN') + ' 的笔记' : this.tag ? '#' + this.tag : titles[this.mode]);
     if (this.mode === 'history') { this.renderHistory(); return; }
     if (this.mode === 'sources') { this.renderSources(); return; }
     const memos = byDay ? this.memos.filter(memo => new Date(memo.createdAt).toDateString() === this.selectedDay) : this.memos;
     const filtered = filterMemos(memos, this.query, this.tag, this.mode);
-    this.summary.setText(this.mode === 'inbox' ? '摘录已经留下，再写一句自己的理解。' : filtered.length + ' 张卡片 · 每一个想法，都值得再看一眼');
+    this.summary.setText(this.mode === 'inbox' ? '摘录已经留下，再写一句自己的理解。' : '每一个想法，都值得再看一眼');
     if (!filtered.length) {
       if (byDay && !this.query) {
-        this.empty('这一天没有笔记', '点击其他日期，或从左侧返回全部卡片。');
+        this.empty('这一天没有笔记', '点击其他日期，或从左侧返回全部笔记。');
         return;
       }
       this.empty(this.query || this.tag ? '还没有找到这条线索' : '从一个想法开始', this.query || this.tag ? '试试更短的关键词，或选择其他标签。' : '在 Chrome 划线，或在上方记下一句话。它们会在这里相遇。'); return;
@@ -466,15 +465,33 @@ class CardboxView extends ItemView {
     }, 'nt-icon-button');
     more.setAttribute('aria-haspopup', 'menu');
     more.setAttribute('aria-expanded', 'false');
+    const selectTag = (tag: string) => { this.tag = tag; this.mode = 'all'; this.selectedSource = ''; this.pageSize = 30; this.renderNavigation(); this.renderFeed(); };
+    const tagButtons = new Map<string, HTMLElement>();
     if (memo.tags.length) {
       const tags = card.createDiv({ cls: 'nt-card-tags', attr: { 'aria-label': '卡片标签' } });
       for (const tag of memo.tags) {
-        const item = button(tags, '#' + tag, '', () => { this.tag = tag; this.mode = 'all'; this.selectedSource = ''; this.pageSize = 30; this.renderNavigation(); this.renderFeed(); }, 'nt-card-tag');
+        if (tagButtons.has(tag.toLocaleLowerCase())) continue;
+        const item = button(tags, '#' + tag, '', () => selectTag(tag), 'nt-card-tag');
+        tagButtons.set(tag.toLocaleLowerCase(), item);
         if (memo.aiTags?.includes(tag)) item.title = '自动标签：' + tag;
       }
     }
     const body = [memo.note, memo.personal].filter(Boolean).join('\n\n');
-    if (body) void MarkdownRenderer.render(this.app, body, card.createDiv({ cls: 'nt-thought markdown-rendered' }), memo.path, this.renderContext);
+    if (body) {
+      const thought = card.createDiv({ cls: 'nt-thought markdown-rendered' });
+      void MarkdownRenderer.render(this.app, body, thought, memo.path, this.renderContext).then(() => {
+        // Use rendered tag links so code samples and ordinary Markdown are untouched.
+        for (const link of thought.querySelectorAll<HTMLAnchorElement>('a.tag')) {
+          const tag = (link.textContent || '').trim().replace(/^#/, '');
+          tagButtons.get(tag.toLocaleLowerCase())?.remove();
+          link.addEventListener('click', event => {
+            event.preventDefault(); event.stopPropagation(); selectTag(tag);
+          });
+        }
+        const tags = card.querySelector('.nt-card-tags');
+        if (tags && !tags.childElementCount) tags.remove();
+      });
+    }
     if (memo.image) void MarkdownRenderer.render(this.app, memo.image, card.createDiv({ cls: 'nt-image markdown-rendered' }), memo.path, this.renderContext);
     if (memo.quote) {
       const quote = card.createEl('blockquote', { text: memo.quote, cls: 'nt-quote' + (!memo.note && !memo.personal ? ' nt-quote-primary' : '') });

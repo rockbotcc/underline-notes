@@ -1,6 +1,6 @@
 .workspace-leaf-content[data-type="noting-cardbox"] .view-content { padding: 0; overflow: hidden; background: var(--nt-bg); }
-.noting-view { --nt-green: #398163; --nt-soft: #e8f1eb; --nt-bg: #f7f8f6; --nt-paper: #fff; --nt-ink: #303a35; --nt-muted: #7c8880; --nt-line: #e7ebe6; color: var(--nt-ink); background: var(--nt-bg); font: 14px/1.75 var(--font-interface); }
-.theme-dark .noting-view { --nt-green: #82bf9e; --nt-soft: #283e32; --nt-bg: #202520; --nt-paper: #282e29; --nt-ink: #dde4df; --nt-muted: #9ba89e; --nt-line: #384139; }
+.noting-view { --nt-tag-ink: var(--nt-green); --nt-tag-bg: var(--nt-soft); --nt-green: #398163; --nt-soft: #e8f1eb; --nt-bg: #f7f8f6; --nt-paper: #fff; --nt-ink: #303a35; --nt-muted: #7c8880; --nt-line: #e7ebe6; color: var(--nt-ink); background: var(--nt-bg); font: 14px/1.75 var(--font-interface); }
+.theme-dark .noting-view { --nt-tag-ink: var(--nt-green); --nt-tag-bg: var(--nt-soft); --nt-green: #82bf9e; --nt-soft: #283e32; --nt-bg: #202520; --nt-paper: #282e29; --nt-ink: #dde4df; --nt-muted: #9ba89e; --nt-line: #384139; }
 .noting-view * { box-sizing: border-box; }
 .noting-view [hidden] { display: none !important; }
 .noting-view button { box-shadow: none; background: transparent; border: 0; color: inherit; cursor: pointer; height: auto; min-height: 32px; font: inherit; display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; white-space: normal; }
@@ -79,7 +79,9 @@
 .noting-view .nt-quote-link:hover { border-left-color: var(--nt-green); color: var(--nt-ink); }
 .noting-view .nt-quote-link:focus-visible { outline: 2px solid var(--nt-green); outline-offset: 3px; }
 .nt-card-tags { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 18px; }
-.noting-view button.nt-card-tag { border: 0; box-shadow: none; background: var(--nt-soft); color: var(--nt-green); font-size: 12px; line-height: 1.5; padding: 4px 9px; min-height: 28px; border-radius: 14px; height: auto; max-width: 100%; overflow-wrap: anywhere; }
+.noting-view button.nt-card-tag, .noting-view .nt-thought a.tag { border: 0; box-shadow: none; background: var(--nt-tag-bg); color: var(--nt-tag-ink); font-size: 14px; font-weight: 400; line-height: 1.5; padding: 2px 7px; min-height: 0; border-radius: 9px; height: auto; max-width: 100%; overflow-wrap: anywhere; text-decoration: none; }
+.noting-view button.nt-card-tag:hover, .noting-view .nt-thought a.tag:hover { background: var(--nt-tag-bg); color: var(--nt-tag-ink); text-decoration: underline; }
+.noting-view .nt-thought a.tag:focus-visible { outline: 2px solid var(--nt-tag-ink); outline-offset: 2px; }
 .nt-tag-status { color: var(--nt-muted); font-size: 11px; margin-top: 8px; }
 .nt-tag-status:empty { display: none; }
 .noting-view .nt-source { display: flex; justify-content: flex-start; gap: 6px; margin-top: 20px; padding: 2px 0; min-height: 28px; max-width: 100%; color: var(--nt-muted); font-size: 12px; text-align: left; }

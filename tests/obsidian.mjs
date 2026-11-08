@@ -65,7 +65,8 @@ try {
   await card('one').getByRole('button', { name: '保存想法', exact: true }).click();
   await waitFor(() => window.files['Reading/Cards/Local/one.md'].includes('#领域/架构'));
   await card('one').getByRole('button', { name: '#领域/架构', exact: true }).waitFor();
-  assert.equal(await card('one').getByRole('button', { name: '#手写', exact: true }).count(), 1);
+  assert.equal(await card('one').getByRole('link', { name: '#手写', exact: true }).count(), 1);
+  assert.equal(await card('one').getByRole('button', { name: '#手写', exact: true }).count(), 0, '正文标签不在顶部重复显示');
   const tagged = await page.evaluate(() => window.files['Reading/Cards/Local/one.md']);
   assert.ok(tagged.includes('用小步反馈改善架构 #手写'));
   assert.equal((tagged.match(/#手写/g) || []).length, 1, '不重复写入手动标签');
@@ -75,7 +76,7 @@ try {
   assert.equal(requestCount, afterSave, '自动标签自己的写入不重复调用模型');
   await card('one').getByRole('button', { name: '#领域/架构', exact: true }).click();
   assert.equal(await page.locator('.nt-feed [data-memo-id]').count(), 1);
-  await page.getByRole('button', { name: '全部卡片', exact: true }).click();
+  await page.getByRole('button', { name: '全部笔记', exact: true }).click();
   await page.reload(); await waitFor(() => window.ready);
   await page.waitForTimeout(700);
   assert.equal(requestCount, afterSave, '重载插件不重新分析已有卡片');
@@ -87,7 +88,7 @@ try {
   assert.equal(await tagNav.getByRole('button', { name: '领域/架构', exact: true }).count(), 0);
   await tagNav.getByRole('button', { name: '展开 领域', exact: true }).click();
   await tagNav.getByRole('button', { name: '领域/架构', exact: true }).waitFor();
-  await page.getByRole('button', { name: '全部卡片', exact: true }).click();
+  await page.getByRole('button', { name: '全部笔记', exact: true }).click();
   // Vault modifications from browser sync or a Markdown editor use the same path.
   await page.evaluate(() => window.modify('two', '外部保存的知识 #手写'));
   await waitFor(() => window.files['Reading/Cards/Local/two.md'].includes('#领域/架构'));
@@ -153,6 +154,13 @@ try {
   await page.getByRole('checkbox', { name: '保存后自动添加标签', exact: true }).uncheck();
   mode = 'normal';
   await page.setViewportSize({ width: 1280, height: 950 });
+  await page.evaluate(() => window.modify('one', '#领域/课程\n\n一、Agent Runtime：从容器到沙箱\n\n二、Agent Network Proxy：沙箱之外的网络边界'));
+  await card('one').getByRole('link', { name: '#领域/课程', exact: true }).waitFor();
+  assert.equal(await card('one').locator('.nt-card-tags').count(), 0, '仅有手写标签时不留下重复标签栏或空白');
+  await card('one').screenshot({ path: 'test-results/card-tags-flomo.png' });
+  await card('one').getByRole('link', { name: '#领域/课程', exact: true }).click();
+  assert.equal(await page.locator('.nt-feed [data-memo-id]').count(), 1, '正文标签仍可筛选卡片');
+  await page.getByRole('button', { name: '全部笔记', exact: true }).click();
   await page.evaluate(() => window.prepareReader());
   await page.getByRole('checkbox', { name: '保存后自动添加标签', exact: true }).check();
   await editCard('h_reader', '编辑');
