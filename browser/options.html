@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>划线笔记 / Underline Notes · 本地笔记</title>
+  <title>划线笔记 / Underline Notes · 笔记写入</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
@@ -11,15 +11,26 @@
     <aside class="rail">
       <a class="brand" href="options.html" aria-label="划线笔记 / Underline Notes"><span class="brand-mark" aria-hidden="true">U</span><span class="brand-name">划线笔记<small> / Underline Notes</small></span></a>
       <div class="rail-copy">读过的好句子，<br>留下来的想法。</div>
-      <nav><a href="#connection" class="active">本地笔记</a><a href="#reading">阅读记录</a><a href="#backup">备份与恢复</a></nav>
+      <nav><a href="#destination" class="active">笔记写入</a><a href="#reading">阅读记录</a><a href="#backup">备份与恢复</a></nav>
       <div class="rail-bottom"><span class="dot"></span> 本地优先 <span>v0.3</span></div>
     </aside>
     <main>
-      <header class="page-header"><h1>本地笔记</h1><p>管理笔记双向同步、阅读记录和备份。</p></header>
+      <header class="page-header"><h1>笔记写入</h1><p>选择笔记写入位置，管理阅读记录和备份。</p></header>
       <div id="notice" role="status" hidden></div>
+      <section class="card" id="destination">
+        <div class="section-title"><div><h2>笔记写入位置</h2><p>笔记先保存在浏览器，再写入你选择的位置。</p></div></div>
+        <label class="field" for="output-target">写入位置</label>
+        <select id="output-target" form="settings-form"><option value="obsidian">本地 Obsidian（默认）</option><option value="flomo">flomo</option></select>
+        <div id="flomo-settings" hidden>
+          <label class="field" for="flomo-api-url">flomo API URL<span>在 <a href="https://flomoapp.com/mine?source=incoming_webhook" target="_blank" rel="noreferrer">flomo 的 API 设置</a>中复制专属记录 API URL（需相应会员权限）。</span></label>
+          <input type="password" id="flomo-api-url" form="settings-form" autocomplete="off" spellcheck="false" maxlength="2000" placeholder="https://flomoapp.com/iwh/…/…/">
+          <p class="hint">保存后，新增或修改的划线、批注和文章笔记会发送到 flomo；已有笔记不会批量补发。每次修改会追加新记录，删除和 flomo 内的修改不会反向同步。图片以原图链接写入，全文与阅读记录仍保存在浏览器。API URL 仅保存在本机，不包含在资料备份中。</p>
+        </div>
+        <div class="actions destination-actions"><button class="primary" type="submit" form="settings-form">保存写入设置</button></div>
+      </section>
       <section id="connection" class="connection card">
-        <div class="section-title"><div><h2>连接笔记文件夹</h2><p>新建或选择文件夹，资料会保存在其中的 <code>Reading/</code>。</p></div><span class="pill" id="connection-state">尚未连接</span></div>
-        <div class="connection-flow"><div class="flow-node"><span class="app-icon chrome-icon">↗</span><div><strong>Chrome</strong><span>划线 · 批注 · 阅读</span></div></div><span class="flow-line">↔</span><div class="flow-node"><span class="app-icon folder-icon">▤</span><div><strong>Reading/</strong><span>Markdown + JSON</span></div></div><span class="flow-line">↔</span><div class="flow-node"><span class="app-icon obsidian-icon">◈</span><div><strong>Obsidian（可选）</strong><span>编辑 · 关联 · 整理</span></div></div></div>
+        <div class="section-title"><div><h2 id="connection-title">连接笔记文件夹</h2><p id="connection-description">新建或选择文件夹，资料会保存在其中的 <code>Reading/</code>。</p></div><span class="pill" id="connection-state">尚未连接</span></div>
+        <div class="connection-flow" id="local-flow"><div class="flow-node"><span class="app-icon chrome-icon">↗</span><div><strong>Chrome</strong><span>划线 · 批注 · 阅读</span></div></div><span class="flow-line">↔</span><div class="flow-node"><span class="app-icon folder-icon">▤</span><div><strong>Reading/</strong><span>Markdown + JSON</span></div></div><span class="flow-line">↔</span><div class="flow-node"><span class="app-icon obsidian-icon">◈</span><div><strong>Obsidian（可选）</strong><span>编辑 · 关联 · 整理</span></div></div></div>
         <div class="actions"><button class="primary" id="choose-directory">选择笔记文件夹</button><button id="authorize" hidden>重新授权</button><button id="flush">立即同步笔记</button><a class="button" id="open-obsidian" hidden>用 Obsidian 打开 ↗</a></div>
         <p class="hint" id="folder-name">可以新建「划线笔记」文件夹，以后也能用 Obsidian 打开它。</p>
         <div class="stats"><div><strong id="article-count">0</strong><span>篇文章</span></div><div><strong id="highlight-count">0</strong><span>条划线</span></div><div><strong id="pending-count">0</strong><span>项待写入</span></div><div class="sync-status"><span class="dot"></span><span id="sync-status">划线和笔记先保存在浏览器本地</span></div></div>
@@ -27,11 +38,11 @@
       </section>
       <form id="settings-form">
         <section class="card" id="reading">
-          <div class="section-title"><div><h2>阅读记录</h2><p>连接文件夹后，读过的文章会按天整理为 Markdown 阅读日志。</p></div></div>
+          <div class="section-title"><div><h2>阅读记录</h2><p>使用本地 Obsidian 时，读过的文章会按天整理为 Markdown 阅读日志；flomo 不接收自动阅读记录。</p></div></div>
           <label class="toggle-row"><span><strong>自动记录阅读</strong><small>文章页在前台活跃约 15 秒后收录，闲置 60 秒暂停计时。</small></span><input type="checkbox" id="record-history" role="switch"><span class="switch" aria-hidden="true"></span></label>
           <label class="field" for="excluded-domains">排除的网站<span>每行一个域名，也会排除它的子域名。划线和阅读记录都会停用。</span></label>
           <textarea id="excluded-domains" rows="3" placeholder="mail.google.com&#10;example.com"></textarea>
-          <div class="field-row"><div><label class="field" for="vault-name">Obsidian 仓库名称（可选）<span>用于“在 Obsidian 中打开”，与 Obsidian 显示的名称一致。</span></label><input type="text" id="vault-name" placeholder="例如：My Notes" maxlength="200"></div><button class="primary" type="submit">保存设置</button></div>
+          <div class="field-row"><div id="vault-settings"><label class="field" for="vault-name">Obsidian 仓库名称（可选）<span>用于“在 Obsidian 中打开”，与 Obsidian 显示的名称一致。</span></label><input type="text" id="vault-name" placeholder="例如：My Notes" maxlength="200"></div><button class="primary" type="submit">保存设置</button></div>
         </section>
       </form>
       <section class="card" id="backup">
@@ -39,7 +50,7 @@
         <div class="actions"><button id="export-backup">下载浏览器资料备份</button><button id="import-backup">导入备份</button><button id="restore-directory">从已连接文件夹恢复</button><input id="backup-file" type="file" accept="application/json,.json" hidden></div>
         <p class="hint">Obsidian 中补写的“延伸思考”请随仓库一起备份。卸载扩展会清除浏览器内的数据。</p>
       </section>
-      <footer class="page-footer"><p>每条划线和文章笔记写入 <code>Cards/</code>，正文写入 <code>Articles/</code>。卡片盒和每日回顾会直接展开卡片。</p><p>在 Obsidian 中点击“编辑笔记”修改“我的批注”，浏览器运行且文件夹授权有效时会自动同步，通常每分钟检查一次，也可立即同步。两边修改冲突时保留版本并提示合并。摘录和来源是引用材料；旧“延伸思考”和随手记仍仅保存在 Obsidian。</p></footer>
+      <footer class="page-footer" id="local-help"><p>每条划线和文章笔记写入 <code>Cards/</code>，正文写入 <code>Articles/</code>。卡片盒和每日回顾会直接展开卡片。</p><p>在 Obsidian 中点击“编辑笔记”修改“我的批注”，浏览器运行且文件夹授权有效时会自动同步，通常每分钟检查一次，也可立即同步。两边修改冲突时保留版本并提示合并。摘录和来源是引用材料；旧“延伸思考”和随手记仍仅保存在 Obsidian。</p></footer>
     </main>
   </div>
   <script type="module" src="options.js"></script>

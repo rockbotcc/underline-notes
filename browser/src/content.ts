@@ -75,7 +75,7 @@ let savingSelection = false;
 let imageTarget: HTMLImageElement | null = null;
 let renderTimer: ReturnType<typeof setTimeout>;
 let toastTimer: ReturnType<typeof setTimeout>;
-let outputStatus: { connected: boolean; vaultName: string; pending: boolean; error: string } | undefined;
+let outputStatus: { target?: 'flomo'; sent?: boolean; connected: boolean; vaultName?: string; pending: boolean; error: string } | undefined;
 
 async function refreshOutputStatus(announce = false) {
   const url = currentUrl;
@@ -87,6 +87,12 @@ async function refreshOutputStatus(announce = false) {
 }
 
 function outputMessage() {
+  if (outputStatus?.target === 'flomo') {
+    if (outputStatus.error) return 'flomo 写入需要处理：' + outputStatus.error;
+    if (!outputStatus.connected) return '已保存在浏览器；请配置 flomo API URL';
+    if (outputStatus.pending) return '已保存在浏览器，等待写入 flomo';
+    return outputStatus.sent ? '已写入 flomo' : '已保存在浏览器；新增或修改笔记后写入 flomo';
+  }
   if (!outputStatus?.connected) return '已保存在浏览器；连接笔记文件夹后可自动写入';
   if (outputStatus.error) return '同步需要处理：' + outputStatus.error;
   if (outputStatus.pending) return '已保存在浏览器，正在等待写入笔记文件夹';
@@ -310,7 +316,7 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
   if (article?.annotations.some(item => item.id === annotation.id)) {
     actions.append(button(annotation.image ? '删除图片笔记' : '删除笔记', async () => {
       const target = annotation.image ? '这条图片笔记' : '这条笔记及对应的划线';
-      if (!window.confirm('确定删除' + target + '吗？同步时也会删除 Obsidian 中对应的卡片，包括卡片里补写的内容。')) return;
+      if (!window.confirm('确定删除' + target + (settings.outputTarget === 'flomo' ? '吗？flomo 中已写入的记录需自行删除。' : '吗？同步时也会删除 Obsidian 中对应的卡片，包括卡片里补写的内容。'))) return;
       article = await rpc<Article>({ type: 'DELETE_ANNOTATION', page: page(), id: annotation.id });
       editorDraft = false;
       closeEditor();
@@ -335,7 +341,7 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
     editor.append(imagePreview(annotation.image), hint);
   } else editor.append(colors);
   editor.append(input, actions);
-  if (!outputStatus?.connected) editor.append(button('连接笔记文件夹，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
+  if (!outputStatus?.connected) editor.append(button(settings.outputTarget === 'flomo' ? '配置 flomo，开启自动写入' : '连接笔记文件夹，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
   editor.hidden = false;
   editorDraft = false;
   positionFloating(editor, rect);
@@ -367,7 +373,7 @@ function renderPanel(focusNote = false) {
   header.lastElementChild!.setAttribute('aria-label', '关闭侧边栏');
   const main = element('main');
   main.append(element('div', 'eyebrow', new URL(currentUrl).hostname), element('h1', '', document.title));
-  main.append(element('div', 'muted', excluded ? '此网站已暂停记录' : '本页笔记 · 本地保存'));
+  main.append(element('div', 'muted', excluded ? '此网站已暂停记录' : settings.outputTarget === 'flomo' ? '本页笔记 · flomo' : '本页笔记 · 本地保存'));
   if (excluded) {
     main.append(element('p', 'empty', '可以在设置中移除此网站，恢复划线和阅读记录。'));
   } else {
@@ -444,7 +450,7 @@ function renderPanel(focusNote = false) {
       main.append(card);
     }
     if (article) main.append(button('移除本页记录', async () => {
-      if (!window.confirm('移除本页划线、笔记和阅读记录？同步时也会删除 Obsidian 中本页的笔记卡片，包括卡片里补写的内容。')) return;
+      if (!window.confirm(settings.outputTarget === 'flomo' ? '移除本页划线、笔记和阅读记录？flomo 中已写入的记录需自行删除。' : '移除本页划线、笔记和阅读记录？同步时也会删除 Obsidian 中本页的笔记卡片，包括卡片里补写的内容。')) return;
       await rpc({ type: 'DELETE_ARTICLE', page: page() });
       article = null;
       pageDraft = undefined;
@@ -456,7 +462,13 @@ function renderPanel(focusNote = false) {
   }
   const footer = element('footer');
   if (article) footer.append(element('span', 'output-status', outputMessage()));
-  if (outputStatus?.connected && settings.vaultName) {
+  if (settings.outputTarget === 'flomo') {
+    const link = element('a', '', '在 flomo 回顾 ↗');
+    link.href = 'https://v.flomoapp.com/';
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    footer.append(link);
+  } else if (outputStatus?.connected && settings.vaultName) {
     const link = element('a', '', '在 Obsidian 回顾 ↗');
     link.href = obsidianUrl(settings, article?.id);
     footer.append(link);

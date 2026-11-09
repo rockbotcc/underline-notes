@@ -2,7 +2,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
 a { color: #526647; text-decoration: none; }
-button, input, textarea { font: inherit; }
+button, input, textarea, select { font: inherit; }
 button, .button { display: inline-flex; align-items: center; justify-content: center; min-height: 37px; border: 1px solid #dce1d3; border-radius: 7px; padding: 8px 14px; background: #fff; color: #4b5941; cursor: pointer; font-size: 13px; }
 button:hover, .button:hover { background: #f0f3e9; border-color: #b8c4a9; }
 button:disabled { opacity: .55; cursor: wait; }
@@ -60,7 +60,7 @@ code { font-family: ui-monospace, monospace; font-size: 11px; color: #788268; }
 .toggle-row input:focus-visible + .switch { outline: 2px solid #70865f; outline-offset: 3px; }
 .field { display: block; font-size: 12px; color: #5b6452; margin: 20px 0 10px; }
 .field span { display: block; font-size: 11px; color: #969c8b; margin-top: 7px; line-height: 1.6; }
-textarea, input[type="text"] { width: 100%; padding: 10px 12px; border: 1px solid #dfe4d5; border-radius: 6px; background: #fdfefa; color: #4d5b42; font-size: 12px; line-height: 1.7; }
+textarea, input[type="text"], input[type="password"], select { width: 100%; padding: 10px 12px; border: 1px solid #dfe4d5; border-radius: 6px; background: #fdfefa; color: #4d5b42; font-size: 12px; line-height: 1.7; }
 textarea { resize: vertical; min-height: 70px; }
 textarea::placeholder, input::placeholder { color: #b0b6a7; }
 .field-row { display: flex; align-items: flex-end; gap: 26px; }
@@ -74,3 +74,5 @@ textarea::placeholder, input::placeholder { color: #b0b6a7; }
 #sync-error { margin: 16px 0 0; }
 @media (max-width: 1000px) { main { padding: 36px 28px; } .shell { grid-template-columns: 190px minmax(0, 1fr); } .rail { padding: 36px 19px 25px; } .stats { flex-wrap: wrap; gap: 15px 22px; } .stats .sync-status { margin-left: 0; } }
 @media (max-width: 720px) { .shell { display: block; } .rail { height: auto; position: static; padding: 18px 24px; border-bottom: 1px solid #e0e4d8; border-right: 0; } .rail-copy, .rail nav, .rail-bottom { display: none; } main { padding: 28px 17px; } .card { padding: 22px 18px; } .connection-flow { padding: 18px 10px; } .flow-node { display: block; } .flow-node .app-icon { margin-bottom: 10px; } .field-row { display: block; } .field-row button { margin-top: 12px; } }
+
+.destination-actions { margin-top: 18px; }

@@ -48,6 +48,9 @@ async function refresh(fillForm = false) {
     get<HTMLInputElement>('record-history').checked = currentSettings.recordHistory;
     get<HTMLTextAreaElement>('excluded-domains').value = currentSettings.excludedDomains.join('\n');
     get<HTMLInputElement>('vault-name').value = currentSettings.vaultName;
+    get<HTMLSelectElement>('output-target').value = currentSettings.outputTarget;
+    get<HTMLInputElement>('flomo-api-url').value = currentSettings.flomoApiUrl;
+    updateDestinationForm();
   }
   get('article-count').textContent = String(status.articles);
   get('highlight-count').textContent = String(status.annotations);
@@ -58,7 +61,16 @@ async function refresh(fillForm = false) {
   const link = get<HTMLAnchorElement>('open-obsidian');
   link.hidden = !currentSettings.vaultName || !status.directoryName;
   link.href = obsidianUrl(currentSettings);
-  get('authorize').hidden = !status.directoryName;
+  const isFlomo = currentSettings.outputTarget === 'flomo';
+  get('authorize').hidden = isFlomo || !status.directoryName;
+  for (const id of ['choose-directory', 'local-flow', 'local-help', 'restore-directory']) get(id).hidden = isFlomo;
+  link.hidden ||= isFlomo;
+  get('connection-title').textContent = isFlomo ? '写入 flomo' : '连接笔记文件夹';
+  get('connection-description').textContent = isFlomo ? '按条写入划线和笔记，失败后保留在本机队列中重试。' : '新建或选择文件夹，资料会保存在其中的 Reading/。';
+  if (isFlomo) {
+    get('connection-state').textContent = currentSettings.flomoApiUrl ? 'API 已配置' : '尚未配置';
+    get('folder-name').textContent = '每条记录包含摘录或文章笔记、批注和来源链接。切换写入位置会暂停原位置的写入。';
+  }
   get('sync-error').hidden = !status.syncError;
   get('sync-error').textContent = status.syncError || '';
 }
@@ -67,6 +79,10 @@ async function flush() {
   await rpc({ type: 'FLUSH' });
   const status = await rpc<Status>({ type: 'STATUS' });
   if (status.syncError) throw new Error(status.syncError);
+  if (status.settings.outputTarget === 'flomo') {
+    notice(status.pending.length ? '正在写入 flomo，剩余记录会继续重试。' : 'flomo 没有待写入的笔记。');
+    return;
+  }
   if (!status.directoryName) { notice('请先选择笔记文件夹。'); return; }
   notice(status.pending.length ? '正在同步，剩余记录会继续重试。' : '笔记已与本地文件夹同步。');
 }
@@ -102,11 +118,21 @@ action('authorize', async () => {
 });
 action('flush', flush);
 
+function updateDestinationForm() {
+  const isFlomo = get<HTMLSelectElement>('output-target').value === 'flomo';
+  get('flomo-settings').hidden = !isFlomo;
+  get('vault-settings').hidden = isFlomo;
+  get<HTMLInputElement>('flomo-api-url').required = isFlomo;
+}
+get('output-target').addEventListener('change', updateDestinationForm);
+
 get<HTMLFormElement>('settings-form').addEventListener('submit', async event => {
   event.preventDefault();
   try {
     await rpc({ type: 'SAVE_SETTINGS', settings: {
       ...currentSettings,
+      outputTarget: get<HTMLSelectElement>('output-target').value as Settings['outputTarget'],
+      flomoApiUrl: get<HTMLInputElement>('flomo-api-url').value.trim(),
       recordHistory: get<HTMLInputElement>('record-history').checked,
       excludedDomains: get<HTMLTextAreaElement>('excluded-domains').value.split(/[\s,，]+/).filter(Boolean),
       vaultName: get<HTMLInputElement>('vault-name').value,

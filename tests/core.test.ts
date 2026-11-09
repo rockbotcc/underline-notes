@@ -59,7 +59,7 @@ test('Markdown 保留用户笔记，转义网页内容，阅读时间合并到�
   assert.ok(markdown.includes('![['));
   assert.ok(markdown.includes('\\<script\\>'));
   assert.match(dayMarkdown('2026-11-05', sessions, [article]), /2 分钟 · 2 次阅读/);
-  const uri = obsidianUrl({ recordHistory: true, excludedDomains: [], vaultName: '我的 笔记', vaultFolder: 'Reading' }, id);
+  const uri = obsidianUrl({ outputTarget: 'obsidian', flomoApiUrl: '', recordHistory: true, excludedDomains: [], vaultName: '我的 笔记', vaultFolder: 'Reading' }, id);
   assert.equal(new URL(uri).searchParams.get('file'), `Reading/Articles/${id}.md`);
 });
 

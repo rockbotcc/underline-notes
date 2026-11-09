@@ -1,5 +1,6 @@
 import { database, dirty, getDirectory, getSettings, saveArticle, type WriteTransaction } from './db';
-import { flushFiles } from './files';
+import { flushOutput } from './output';
+import { checkedFlomoUrl, flomoContent } from './flomo-api';
 import { validateBackup } from './backup';
 import { articleId, publicationDate, normalizeUrl, isExcluded, checkedImage, COLORS, type Article, type PageInfo, type Annotation, type Session, type Settings } from '../../shared/model';
 
@@ -52,14 +53,18 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
   const settings = await getSettings();
   if (message.type === 'GET_PAGE') {
     const page = await pageInfo(message.page, sender);
-    await flushFiles();
+    if (settings.outputTarget === 'obsidian') await flushOutput();
     const article = await db.get('articles', await articleId(page.url));
-    return { article: article?.deletedAt ? null : article ?? null, settings, excluded: isExcluded(page.url, settings.excludedDomains) };
+    return { article: article?.deletedAt ? null : article ?? null, settings: { ...settings, flomoApiUrl: '' }, excluded: isExcluded(page.url, settings.excludedDomains) };
   }
   if (message.type === 'PAGE_OUTPUT_STATUS') {
     const page = await pageInfo(message.page, sender);
     const id = await articleId(page.url);
     const directory = await getDirectory();
+    if (settings.outputTarget === 'flomo') {
+      const jobs = (await db.getAll('flomo')).filter(job => job.articleId === id);
+      return { target: 'flomo', connected: Boolean(settings.flomoApiUrl), pending: jobs.some(job => job.content !== job.sentContent), sent: jobs.some(job => job.sentContent), error: jobs.find(job => job.error)?.error || '' };
+    }
     const pending = await db.get('pending', 'article:' + id);
     return { connected: Boolean(directory), vaultName: settings.vaultName, pending: Boolean(pending), error: pending?.error || await db.get('meta', 'syncError') || '' };
   }
@@ -85,7 +90,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
     }
     const note = message.type === 'SAVE_PAGE_NOTE' ? text(message.note, 100000) : undefined;
     const annotationToDelete = message.type === 'DELETE_ANNOTATION' ? text(message.id, 80) : undefined;
-    if (annotation || note !== undefined || annotationToDelete || message.type === 'DELETE_ARTICLE') await flushFiles();
+    if (settings.outputTarget === 'obsidian' && (annotation || note !== undefined || annotationToDelete || message.type === 'DELETE_ARTICLE')) await flushOutput();
     let session: Session | undefined;
     if (message.type === 'READING') {
       if (!settings.recordHistory) return null;
@@ -95,7 +100,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       if (!Number.isFinite(Date.parse(value.startedAt)) || new Date(value.day).toISOString().slice(0, 10) !== value.day) throw new Error('阅读日期无效');
       session = { id: value.id, articleId: id, day: value.day, startedAt: new Date(value.startedAt).toISOString(), updatedAt: new Date().toISOString(), activeMs: Math.round(value.activeMs), progress: Math.max(0, Math.min(100, value.progress)) };
     }
-    const tx = db.transaction(['articles', 'sessions', 'pending'], 'readwrite');
+    const tx = db.transaction(['articles', 'sessions', 'pending', 'flomo'], 'readwrite');
     const previous = await tx.objectStore('articles').get(id);
     if (message.type === 'READING' && previous?.deletedAt) { await tx.done; return null; }
     const article = await ensureArticle(tx, page, id);
@@ -136,9 +141,21 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       delete article.bodyCapturedAt;
       article.deletedAt = new Date().toISOString();
     }
+    const flomo = tx.objectStore('flomo');
+    if (annotationToDelete) await flomo.delete(id + ':' + annotationToDelete);
+    if (message.type === 'DELETE_ARTICLE') {
+      for (const job of await flomo.getAll()) if (job.articleId === id) await flomo.delete(job.key);
+    }
+    if (note !== undefined && !note.trim()) await flomo.delete(id + ':page');
+    if (settings.outputTarget === 'flomo' && (annotation || note?.trim())) {
+      const key = id + ':' + (annotation?.id || 'page');
+      const previousJob = await flomo.get(key);
+      const content = flomoContent(article, annotation);
+      await flomo.put({ key, articleId: id, content, version: crypto.randomUUID(), sentContent: previousJob?.sentContent });
+    }
     await saveArticle(tx, article);
     await tx.done;
-    void flushFiles().catch(console.error);
+    void flushOutput().catch(console.error);
     if (message.type !== 'READING') void notifyPages(page.url);
     return article.deletedAt ? null : article;
   }
@@ -148,13 +165,15 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
     case 'STATUS': {
       const articles = (await db.getAll('articles')).filter(article => !article.deletedAt);
       const directory = await getDirectory();
+      const flomoPending = (await db.getAll('flomo')).filter(job => job.content !== job.sentContent);
+      const isFlomo = settings.outputTarget === 'flomo';
       return {
         settings, directoryName: directory?.name ?? '',
         articles: articles.length,
         annotations: articles.reduce((total, article) => total + article.annotations.length, 0),
-        pending: await db.getAll('pending'),
-        lastSync: await db.get('meta', 'lastSync'),
-        syncError: await db.get('meta', 'syncError'),
+        pending: isFlomo ? flomoPending : await db.getAll('pending'),
+        lastSync: await db.get('meta', isFlomo ? 'flomoLastSync' : 'lastSync'),
+        syncError: isFlomo ? flomoPending.find(job => job.error)?.error : await db.get('meta', 'syncError'),
       };
     }
     case 'SAVE_SETTINGS': {
@@ -166,12 +185,17 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       });
       const folder = text(value.vaultFolder, 500).trim().replace(/^\/+|\/+$/g, '');
       if (folder.split('/').some(part => part === '..' || part === '.')) throw new Error('文件夹路径无效');
-      const next: Settings = { recordHistory: value.recordHistory, excludedDomains: [...new Set(domains)], vaultName: text(value.vaultName, 200).trim(), vaultFolder: folder };
-      await db.put('meta', next, 'settings');
+      const outputTarget = value.outputTarget ?? 'obsidian';
+      if (!['obsidian', 'flomo'].includes(outputTarget)) throw new Error('写入位置无效');
+      const rawUrl = text(value.flomoApiUrl ?? '', 2000).trim();
+      const flomoApiUrl = rawUrl || outputTarget === 'flomo' ? checkedFlomoUrl(rawUrl) : '';
+      const next: Settings = { outputTarget, flomoApiUrl, recordHistory: value.recordHistory, excludedDomains: [...new Set(domains)], vaultName: text(value.vaultName, 200).trim(), vaultFolder: folder };
+      await navigator.locks.request('noting-output', () => db.put('meta', next, 'settings'));
+      void flushOutput().catch(console.error);
       void notifyPages();
       return next;
     }
-    case 'FLUSH': await flushFiles(); return null;
+    case 'FLUSH': await flushOutput(true); return null;
     case 'REQUEUE': {
       const tx = db.transaction(['articles', 'sessions', 'pending'], 'readwrite');
       for (const article of await tx.objectStore('articles').getAll()) await dirty(tx, 'article:' + article.id);
@@ -214,7 +238,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       }
       await dirty(tx, 'index');
       await tx.done;
-      void flushFiles().catch(console.error);
+      void flushOutput().catch(console.error);
       void notifyPages();
       return { articles: data.articles.length, sessions: data.sessions.length };
     }
@@ -245,6 +269,6 @@ chrome.action.onClicked.addListener(tab => {
 async function scheduleFlush() {
   await chrome.alarms.create('noting-files', { periodInMinutes: 1 });
 }
-chrome.runtime.onInstalled.addListener(() => { void scheduleFlush(); void flushFiles().catch(console.error); });
-chrome.runtime.onStartup.addListener(() => { void scheduleFlush(); void flushFiles().catch(console.error); });
-chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'noting-files') void flushFiles().catch(console.error); });
+chrome.runtime.onInstalled.addListener(() => { void scheduleFlush(); void flushOutput().catch(console.error); });
+chrome.runtime.onStartup.addListener(() => { void scheduleFlush(); void flushOutput().catch(console.error); });
+chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'noting-files') void flushOutput().catch(console.error); });

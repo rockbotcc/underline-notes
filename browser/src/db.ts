@@ -1,7 +1,9 @@
 import { openDB, type DBSchema, type IDBPTransaction } from 'idb';
 import { DEFAULT_SETTINGS, type Article, type Session, type Pending, type Settings } from '../../shared/model';
+import type { FlomoJob } from './flomo-api';
 
 interface NotingDB extends DBSchema {
+  flomo: { key: string; value: FlomoJob };
   articles: { key: string; value: Article };
   sessions: { key: string; value: Session; indexes: { articleId: string; day: string } };
   pending: { key: string; value: Pending };
@@ -9,8 +11,10 @@ interface NotingDB extends DBSchema {
   meta: { key: string; value: unknown };
 }
 
-export const database = openDB<NotingDB>('noting', 1, {
-  upgrade(db) {
+export const database = openDB<NotingDB>('noting', 2, {
+  upgrade(db, oldVersion) {
+    db.createObjectStore('flomo', { keyPath: 'key' });
+    if (oldVersion >= 1) return;
     db.createObjectStore('articles', { keyPath: 'id' });
     const sessions = db.createObjectStore('sessions', { keyPath: 'id' });
     sessions.createIndex('articleId', 'articleId');
@@ -21,7 +25,7 @@ export const database = openDB<NotingDB>('noting', 1, {
   },
 });
 
-export type WriteTransaction = IDBPTransaction<NotingDB, ['articles', 'sessions', 'pending'], 'readwrite'>;
+export type WriteTransaction = IDBPTransaction<NotingDB, ('articles' | 'sessions' | 'pending' | 'flomo')[], 'readwrite'>;
 
 export async function dirty(tx: WriteTransaction, key: string) {
   await tx.objectStore('pending').put({ key, version: crypto.randomUUID() });

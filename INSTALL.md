@@ -7,6 +7,8 @@
 - **首次安装 Chrome**：从第 1 步开始。默认使用普通文件夹；用户同时要求用 Obsidian 回顾时，完成第 3 步后继续安装插件。
 - **Chrome 已能保存摘录，现在要加装 Obsidian**：直接从下文「用 Obsidian 打开已有笔记」开始。沿用 Chrome 已授权的目录和已有摘录，不必重新加载扩展、选择文件夹或制作测试卡片。
 
+用户选择 flomo 时，加载 Chrome 扩展后，在「笔记写入位置」选择 flomo，填写用户自己的 API URL 并保存。无需选择本地笔记文件夹，也无需安装 Obsidian。API URL 可在 [flomo API 设置](https://flomoapp.com/mine?source=incoming_webhook)获取；应由用户在扩展设置中填写。后续保存一条笔记并在 flomo 核对即可。具体追加、重试和多设备边界见 [写入 flomo](README.md#写入-flomo)。
+
 ## 1. 确定安装位置
 
 - 使用项目官方的[最新正式 Release](https://github.com/rockbotcc/underline-notes/releases/latest)。新装 Chrome 扩展时选择长期保留的位置，例如 macOS 上的 `~/Library/Application Support/Underline Notes/chrome/`；升级时沿用 Chrome 已加载的目录（包括以前用源码安装的 `dist/`），以保留扩展身份和本地数据。

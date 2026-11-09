@@ -64,6 +64,8 @@ export interface Session {
 }
 
 export interface Settings {
+  outputTarget: 'obsidian' | 'flomo';
+  flomoApiUrl: string;
   recordHistory: boolean;
   excludedDomains: string[];
   vaultName: string;
@@ -71,6 +73,8 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  outputTarget: 'obsidian',
+  flomoApiUrl: '',
   recordHistory: true,
   excludedDomains: [],
   vaultName: '',
