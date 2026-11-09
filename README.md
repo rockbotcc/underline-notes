@@ -29,10 +29,12 @@ Obsidian 插件还支持可选的自动标签。配置模型并开启该功能�
 
 ## 源码与发布
 
+正式版本通过 GitHub Actions 发布：同步更新 npm、Chrome、Obsidian 的版本号及 `versions.json`，添加 `releases/<版本>.md`，再推送与版本号一致的 Git 标签（不加 `v`）。工作流会执行类型检查、单元测试和 flomo 浏览器测试，生成两个安装 ZIP、Obsidian 更新文件及 SHA-256 校验文件，并创建 Release。本地可先运行 `npm run build` 和 `node scripts/package-release.mjs` 检查 `dist-release/` 中的产物。
+
 - `browser/` 包含 Chrome 扩展的清单、设置页和源码。`obsidian/` 包含社区插件的源码与样式。两端共用的笔记模型、Markdown 格式和同步函数在 `shared/`。
 - 运行 `npm run check && npm test && npm run build` 验证两个插件。测试需要支持 TypeScript 类型剥离的 Node.js，例如 Node.js 22.18 及以上版本。
-- Chrome Web Store 使用 `browser/manifest.json` 中的版本号。构建后，在项目根目录运行 `(cd dist && zip ../underline-notes-chrome-0.3.0.zip manifest.json background.js content.js options.js options.html options.css icons/*.png)`。商店文案、截图和审核说明见 [Chrome 发布材料](store/chrome/listing.md)，扩展的数据处理说明见[隐私政策](PRIVACY.md)。
-- Obsidian 社区目录读取仓库根目录的 `manifest.json`。发布时同步维护 `versions.json` 的最低兼容版本，在 GitHub 创建与插件版本完全相同的 Release 标签（如 `0.3.0`），并分别上传 `dist-obsidian/noting/` 下的 `main.js`、`manifest.json` 和 `styles.css`。首次上架还需向 [Obsidian 社区目录](https://github.com/obsidianmd/obsidian-releases) 提交插件信息。
+- Chrome Web Store 使用 `browser/manifest.json` 中的版本号。构建后，在项目根目录运行 `(cd dist && zip ../underline-notes-chrome-0.4.0.zip manifest.json background.js content.js options.js options.html options.css icons/*.png)`。商店文案、截图和审核说明见 [Chrome 发布材料](store/chrome/listing.md)，扩展的数据处理说明见[隐私政策](PRIVACY.md)。
+- Obsidian 社区目录读取仓库根目录的 `manifest.json`。发布时同步维护 `versions.json` 的最低兼容版本，在 GitHub 创建与插件版本完全相同的 Release 标签（如 `0.4.0`），并分别上传 `dist-obsidian/noting/` 下的 `main.js`、`manifest.json` 和 `styles.css`。首次上架还需向 [Obsidian 社区目录](https://github.com/obsidianmd/obsidian-releases) 提交插件信息。
 
 ## 卡片盒体验
 

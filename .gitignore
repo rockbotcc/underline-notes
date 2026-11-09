@@ -1,6 +1,7 @@
 node_modules/
 /dist
 dist-obsidian/
+dist-release/
 test-results/
 *.zip
 .DS_Store
