@@ -2,6 +2,7 @@ import { database, dirty, getDirectory, getSettings, saveArticle, type WriteTran
 import { flushOutput } from './output';
 import { checkedFlomoUrl, flomoContent } from './flomo-api';
 import { validateBackup } from './backup';
+import { autoTagNote, DEFAULT_TAG_AI, tagEndpoint, readVaultTags } from './ai-tags';
 import { articleId, publicationDate, normalizeUrl, isExcluded, checkedImage, COLORS, type Article, type PageInfo, type Annotation, type Session, type Settings } from '../../shared/model';
 
 function text(value: unknown, max: number): string {
@@ -55,7 +56,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
     const page = await pageInfo(message.page, sender);
     if (settings.outputTarget === 'obsidian') await flushOutput();
     const article = await db.get('articles', await articleId(page.url));
-    return { article: article?.deletedAt ? null : article ?? null, settings: { ...settings, flomoApiUrl: '' }, excluded: isExcluded(page.url, settings.excludedDomains) };
+    return { article: article?.deletedAt ? null : article ?? null, settings: { ...settings, flomoApiUrl: '', ai: undefined }, excluded: isExcluded(page.url, settings.excludedDomains) };
   }
   if (message.type === 'PAGE_OUTPUT_STATUS') {
     const page = await pageInfo(message.page, sender);
@@ -100,6 +101,16 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       if (!Number.isFinite(Date.parse(value.startedAt)) || new Date(value.day).toISOString().slice(0, 10) !== value.day) throw new Error('阅读日期无效');
       session = { id: value.id, articleId: id, day: value.day, startedAt: new Date(value.startedAt).toISOString(), updatedAt: new Date().toISOString(), activeMs: Math.round(value.activeMs), progress: Math.max(0, Math.min(100, value.progress)) };
     }
+    let taggedNote: string | undefined;
+    if (settings.ai?.enabled && (annotation || note?.trim())) {
+      try {
+        taggedNote = await autoTagNote(settings.ai, { title: page.title, note: annotation?.note ?? note!, quote: annotation?.anchor.exact ?? '' }, await readVaultTags(await getDirectory()));
+        await db.delete('meta', 'aiTagError');
+      } catch {
+        await db.put('meta', '笔记已保存，自动标签未完成；请检查模型配置、文件夹授权及 Obsidian 导出的 Data/vault-tags.json，下次保存时重试。', 'aiTagError');
+      }
+    }
+    if (taggedNote !== undefined && JSON.stringify((await getSettings()).ai) !== JSON.stringify(settings.ai)) taggedNote = undefined;
     const tx = db.transaction(['articles', 'sessions', 'pending', 'flomo'], 'readwrite');
     const previous = await tx.objectStore('articles').get(id);
     if (message.type === 'READING' && previous?.deletedAt) { await tx.done; return null; }
@@ -113,6 +124,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       }
     }
     if (annotation) {
+      annotation.note = taggedNote ?? annotation.note;
       const index = article.annotations.findIndex(item => item.id === annotation.id);
       if (index === -1 && (message.annotation as Annotation).createdAt) {
         tx.abort();
@@ -122,7 +134,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       else article.annotations[index] = { ...annotation, createdAt: article.annotations[index].createdAt };
     }
     if (annotationToDelete) article.annotations = article.annotations.filter(item => item.id !== annotationToDelete);
-    if (note !== undefined) { article.pageNote = note; article.pageNoteCard = true; }
+    if (note !== undefined) { article.pageNote = taggedNote ?? note; article.pageNoteCard = true; }
     if (session) {
       const previousSession = await tx.objectStore('sessions').get(session.id);
       if (previousSession && (previousSession.articleId !== id || previousSession.day !== session.day)) { tx.abort(); throw new Error('阅读会话发生冲突'); }
@@ -168,7 +180,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       const flomoPending = (await db.getAll('flomo')).filter(job => job.content !== job.sentContent);
       const isFlomo = settings.outputTarget === 'flomo';
       return {
-        settings, directoryName: directory?.name ?? '',
+        settings, aiTagError: await db.get('meta', 'aiTagError'), directoryName: directory?.name ?? '',
         articles: articles.length,
         annotations: articles.reduce((total, article) => total + article.annotations.length, 0),
         pending: isFlomo ? flomoPending : await db.getAll('pending'),
@@ -190,6 +202,11 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       const rawUrl = text(value.flomoApiUrl ?? '', 2000).trim();
       const flomoApiUrl = rawUrl || outputTarget === 'flomo' ? checkedFlomoUrl(rawUrl) : '';
       const next: Settings = { outputTarget, flomoApiUrl, recordHistory: value.recordHistory, excludedDomains: [...new Set(domains)], vaultName: text(value.vaultName, 200).trim(), vaultFolder: folder };
+      const ai = value.ai ?? DEFAULT_TAG_AI;
+      if (typeof ai.enabled !== 'boolean') throw new Error('自动标签设置无效');
+      next.ai = { enabled: ai.enabled, baseUrl: text(ai.baseUrl, 2000).trim(), apiKey: text(ai.apiKey, 4000).trim(), model: text(ai.model, 200).trim() };
+      if (next.ai.baseUrl) tagEndpoint(next.ai.baseUrl);
+      if (ai.enabled && (!next.ai.baseUrl || !next.ai.model)) throw new Error('请填写模型接口地址和模型名称');
       await navigator.locks.request('noting-output', () => db.put('meta', next, 'settings'));
       void flushOutput().catch(console.error);
       void notifyPages();

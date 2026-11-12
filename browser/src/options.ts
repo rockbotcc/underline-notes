@@ -1,6 +1,7 @@
 import { database, getDirectory } from './db';
 import { type DirectoryHandle } from './files';
 import { rpc } from './rpc';
+import { DEFAULT_TAG_AI } from './ai-tags';
 import { DEFAULT_SETTINGS, localDay, obsidianUrl, type Settings, type Pending, type Backup, type Article, type Session } from '../../shared/model';
 
 declare global {
@@ -8,6 +9,7 @@ declare global {
 }
 
 interface Status {
+  aiTagError?: string;
   settings: Settings;
   directoryName: string;
   articles: number;
@@ -50,9 +52,16 @@ async function refresh(fillForm = false) {
     get<HTMLInputElement>('vault-name').value = currentSettings.vaultName;
     get<HTMLSelectElement>('output-target').value = currentSettings.outputTarget;
     get<HTMLInputElement>('flomo-api-url').value = currentSettings.flomoApiUrl;
+    const ai = currentSettings.ai ?? DEFAULT_TAG_AI;
+    get<HTMLInputElement>('ai-enabled').checked = ai.enabled;
+    get<HTMLInputElement>('ai-base-url').value = ai.baseUrl;
+    get<HTMLInputElement>('ai-api-key').value = ai.apiKey;
+    get<HTMLInputElement>('ai-model').value = ai.model;
     updateDestinationForm();
   }
   get('article-count').textContent = String(status.articles);
+  get('ai-tag-error').hidden = !status.aiTagError;
+  get('ai-tag-error').textContent = status.aiTagError || '';
   get('highlight-count').textContent = String(status.annotations);
   get('pending-count').textContent = String(status.pending.length);
   get('connection-state').textContent = status.directoryName ? '文件夹已连接' : '尚未连接';
@@ -62,8 +71,9 @@ async function refresh(fillForm = false) {
   link.hidden = !currentSettings.vaultName || !status.directoryName;
   link.href = obsidianUrl(currentSettings);
   const isFlomo = currentSettings.outputTarget === 'flomo';
-  get('authorize').hidden = isFlomo || !status.directoryName;
-  for (const id of ['choose-directory', 'local-flow', 'local-help', 'restore-directory']) get(id).hidden = isFlomo;
+  get('authorize').hidden = !status.directoryName;
+  for (const id of ['local-flow', 'local-help', 'restore-directory']) get(id).hidden = isFlomo;
+  get('choose-directory').textContent = isFlomo ? '连接 Obsidian 文件夹以读取标签' : '选择笔记文件夹';
   link.hidden ||= isFlomo;
   get('connection-title').textContent = isFlomo ? '写入 flomo' : '连接笔记文件夹';
   get('connection-description').textContent = isFlomo ? '按条写入划线和笔记，失败后保留在本机队列中重试。' : '新建或选择文件夹，资料会保存在其中的 Reading/。';
@@ -131,6 +141,12 @@ get<HTMLFormElement>('settings-form').addEventListener('submit', async event => 
   try {
     await rpc({ type: 'SAVE_SETTINGS', settings: {
       ...currentSettings,
+      ai: {
+        enabled: get<HTMLInputElement>('ai-enabled').checked,
+        baseUrl: get<HTMLInputElement>('ai-base-url').value.trim(),
+        apiKey: get<HTMLInputElement>('ai-api-key').value.trim(),
+        model: get<HTMLInputElement>('ai-model').value.trim(),
+      },
       outputTarget: get<HTMLSelectElement>('output-target').value as Settings['outputTarget'],
       flomoApiUrl: get<HTMLInputElement>('flomo-api-url').value.trim(),
       recordHistory: get<HTMLInputElement>('record-history').checked,

@@ -64,6 +64,7 @@ export interface Session {
 }
 
 export interface Settings {
+  ai?: { enabled: boolean; baseUrl: string; apiKey: string; model: string };
   outputTarget: 'obsidian' | 'flomo';
   flomoApiUrl: string;
   recordHistory: boolean;

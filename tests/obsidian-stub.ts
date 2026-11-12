@@ -19,6 +19,7 @@ for (const [name, implementation] of Object.entries({
 })) Object.defineProperty(HTMLElement.prototype, name, { value: implementation, configurable: true });
 
 export class Component { addChild() {} removeChild() {} registerEvent() {} }
+export function getAllTags(cache: any) { return [...(cache.tags || []).map((tag: any) => tag.tag), ...(cache.frontmatter?.tags || []).map((tag: string) => '#' + tag)]; }
 export class Menu {
   private element: any;
   private hidden = () => {};

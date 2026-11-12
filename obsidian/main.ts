@@ -1,10 +1,11 @@
-import { App, Component, ItemView, MarkdownRenderer, Menu, Notice, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf, normalizePath, parseYaml, requestUrl, setIcon } from 'obsidian';
+import { App, Component, ItemView, MarkdownRenderer, Menu, Notice, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf, normalizePath, parseYaml, requestUrl, setIcon, getAllTags } from 'obsidian';
+import { normalizeTags, VAULT_TAGS_PATH } from '../shared/vault-tags';
 import { filterMemos, filterSourceGroups, groupMemosBySource, localMemo, memoExcerpt, memoImage, parseMemo, reviewMemos, sourceKey, updateThoughts, type Memo, type SourceGroup } from './cards';
 import { DELETE_MARKER_SUFFIX, updateCardNote } from '../shared/note-sync';
 import { DEFAULT_AI, apiRequest, type AISettings, type Transport } from './ai';
 import type { Relation } from './relations';
 import type { Discussion } from './discussion';
-import { generateTags, tagTree, tagVocabulary, tagVersion, writeTags, type TagBranch } from './tags';
+import { generateTags, tagTree, tagVersion, writeTags, type TagBranch } from './tags';
 import { contextForQuote, highlightReaderQuote, type QuoteContext } from './reader';
 
 const VIEW = 'noting-cardbox';
@@ -37,6 +38,8 @@ export default class NotingPlugin extends Plugin {
   tagStatus = new Map<string, string>();
   private writes: Promise<void> = Promise.resolve();
   private unloaded = false;
+  private vocabularyTimer = 0;
+  private vocabularyWrites: Promise<void> = Promise.resolve();
   private transport: Transport = request => requestUrl(request);
   async onload() {
     const saved = await this.loadData();
@@ -46,6 +49,7 @@ export default class NotingPlugin extends Plugin {
     this.registerView(VIEW, leaf => new CardboxView(leaf, this));
     this.addRibbonIcon('layers', '划线笔记 / Underline Notes · 卡片盒', () => void this.activate());
     this.addCommand({ id: 'open-cardbox', name: '打开卡片盒', callback: () => void this.activate() });
+    this.addCommand({ id: 'export-vault-tags', name: '导出全仓库标签供浏览器使用', callback: () => { void this.exportVocabulary().then(() => new Notice('全仓库标签已导出'), () => new Notice('标签导出失败，请检查资料文件夹权限。')); } });
     this.registerObsidianProtocolHandler('noting', () => void this.activate());
     this.addSettingTab(new NotingSettings(this.app, this));
     this.registerEvent(this.app.workspace.on('file-open', file => {
@@ -54,12 +58,17 @@ export default class NotingPlugin extends Plugin {
     // Listen after initial vault loading: opening a vault never bulk-tags old cards.
     this.app.workspace.onLayoutReady(() => {
       if (this.unloaded) return;
+      this.scheduleVocabularyExport();
+      this.registerEvent(this.app.metadataCache.on('changed', () => this.scheduleVocabularyExport()));
+      this.registerEvent(this.app.metadataCache.on('resolved', () => this.scheduleVocabularyExport()));
+      this.registerEvent(this.app.vault.on('delete', () => this.scheduleVocabularyExport()));
+      this.registerEvent(this.app.vault.on('rename', () => this.scheduleVocabularyExport()));
       for (const event of ['create', 'modify'] as const) this.registerEvent(this.app.vault.on(event as 'modify', file => {
         if (file instanceof TFile) this.scheduleTags(file);
       }));
     });
   }
-  onunload() { this.unloaded = true; window.clearTimeout(this.tagTimer); this.pendingTags.clear(); }
+  onunload() { this.unloaded = true; window.clearTimeout(this.tagTimer); window.clearTimeout(this.vocabularyTimer); this.pendingTags.clear(); }
   get folder() { return normalizePath(this.preferences.folder || 'Reading'); }
   savePreferences() {
     const next = this.writes.catch(() => undefined).then(() => this.saveData({ ...this.preferences, relations: this.relations, discussions: this.discussions }));
@@ -83,15 +92,31 @@ export default class NotingPlugin extends Plugin {
   }
   cancelPendingTags() { this.tagGeneration++; this.pendingTags.clear(); }
   private async vocabulary(): Promise<string[]> {
-    const memos: Pick<Memo, 'tags'>[] = [];
+    const tags: string[] = [];
     for (const file of this.app.vault.getMarkdownFiles()) {
-      if (!file.path.startsWith(this.folder + '/Cards/')) continue;
-      try {
-        const text = await this.app.vault.cachedRead(file), memo = parseMemo(file.path, text, metadata(text));
-        if (memo) memos.push({ tags: memo.tags });
-      } catch { /* One unreadable card must not block tagging other cards. */ }
+      const cache = this.app.metadataCache.getFileCache(file);
+      if (cache) tags.push(...(getAllTags(cache) || []));
     }
-    return tagVocabulary(memos);
+    return normalizeTags(tags);
+  }
+  scheduleVocabularyExport() {
+    if (this.unloaded) return;
+    window.clearTimeout(this.vocabularyTimer);
+    this.vocabularyTimer = window.setTimeout(() => { void this.exportVocabulary().catch(() => new Notice('全仓库标签导出失败，请检查资料文件夹权限。')); }, 600);
+  }
+  exportVocabulary(): Promise<void> {
+    const next = this.vocabularyWrites.catch(() => undefined).then(async () => {
+      if (this.unloaded) return;
+      const tags = await this.vocabulary();
+      let path = '';
+      for (const part of (this.folder + '/Data').split('/')) {
+        path = path ? path + '/' + part : part;
+        if (!this.app.vault.getAbstractFileByPath(path)) await this.app.vault.createFolder(path);
+      }
+      await this.app.vault.adapter.write(this.folder + '/' + VAULT_TAGS_PATH, JSON.stringify({ schemaVersion: 1, source: 'obsidian-vault', exportedAt: new Date().toISOString(), tags }, null, 2));
+    });
+    this.vocabularyWrites = next;
+    return next;
   }
   private updateTagStatus() {
     if (this.unloaded) return;
@@ -165,10 +190,12 @@ class NotingSettings extends PluginSettingTab {
       if (!value.trim() || value.split('/').includes('..')) return;
       this.plugin.preferences.folder = normalizePath(value.trim());
       await this.plugin.savePreferences();
+      this.plugin.scheduleVocabularyExport();
       for (const leaf of this.app.workspace.getLeavesOfType(VIEW)) if (leaf.view instanceof CardboxView) void leaf.view.refresh();
     }));
     this.containerEl.createEl('h2', { text: 'AI 自动标签' });
-    this.containerEl.createEl('p', { text: '保存后自动按项目、领域、收件箱或资源归类，优先复用已有标签，保留手写标签。模型收到当前卡片的标题、最多 1800 字批注、1800 字延伸思考、1200 字摘录、手写标签，以及仓库中最多 80 个已有 P.A.I.R. 标签名称，不发送其他卡片正文。' });
+    this.containerEl.createEl('p', { text: '从整个 Obsidian 仓库的正文 #标签和 YAML tags 中选择，支持任意层级，不创建未知标签，保留手写标签。模型收到当前标题、最多 1800 字批注、1800 字延伸思考、1200 字摘录及全仓库标签名，不发送其他笔记正文。标签列表自动导出到资料文件夹的 Data/vault-tags.json，供浏览器读取；Obsidian 关闭后浏览器使用最后导出的列表。' });
+    new Setting(this.containerEl).setName('全仓库标签').setDesc('更新后，浏览器会在下次保存笔记时读取。').addButton(control => control.setButtonText('导出全仓库标签').onClick(() => { void this.plugin.exportVocabulary().then(() => new Notice('全仓库标签已导出'), () => new Notice('标签导出失败，请检查资料文件夹权限。')); }));
     const field = (key: 'baseUrl' | 'apiKey' | 'model', name: string, desc: string, placeholder: string) => {
       new Setting(this.containerEl).setName(name).setDesc(desc).addText(input => {
         input.setPlaceholder(placeholder).setValue(this.plugin.preferences.ai[key]);
@@ -187,7 +214,7 @@ class NotingSettings extends PluginSettingTab {
       if (!value) this.plugin.cancelPendingTags();
       try { await this.plugin.savePreferences(); } catch { new Notice('设置保存失败，请重试。'); }
     }));
-    new Setting(this.containerEl).setName('整理已有标签').setDesc('逐张调用模型，为旧卡片补标签，并将已有自动标签按 P.A.I.R. 归类。保留手写标签和正文；可能产生模型费用，关闭自动标签可停止。').addButton(control => control.setButtonText('整理旧卡片标签').onClick(() => this.plugin.organizeTags()));
+    new Setting(this.containerEl).setName('整理已有标签').setDesc('逐张调用模型，从全仓库已有标签中为旧卡片选择标签。保留手写标签和正文；可能产生模型费用，关闭自动标签可停止。').addButton(control => control.setButtonText('整理旧卡片标签').onClick(() => this.plugin.organizeTags()));
     new Setting(this.containerEl).setName('测试模型连接').setDesc('只发送测试短句，不发送笔记。').addButton(control => control.setButtonText('测试连接').onClick(async () => {
       control.setDisabled(true); control.setButtonText('测试中…');
       try { await this.plugin.testConnection(); new Notice('模型连接成功'); }

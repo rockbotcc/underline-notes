@@ -5,6 +5,7 @@ import { articleCards, articleMarkdown } from '../shared/markdown';
 const root = window as any;
 root.notices = [];
 const initial: Record<string, string> = Object.fromEntries([
+  ['vocabulary', '已有标签 #领域/架构 #领域/最新主题 #领域/旧主题 #领域/知识管理'],
   ['one', 'AI 提升编码效率\n代码生成速度越来越快。'],
   ['two', '代码评审的瓶颈\n审查时间限制了团队交付效率。'],
   ['three', '测试自动化与质量\n自动化测试帮助团队减少回归问题。'],
@@ -16,10 +17,10 @@ const save = () => localStorage.setItem('vault-files', JSON.stringify(files));
 const changed = (file: TFile) => { file.stat.mtime = Date.now(); save(); for (const fn of listeners.modify || []) fn(file); };
 const vault = {
   adapter: {
-    write: async (path: string, text: string) => { files[path] = text; save(); },
+    write: async (path: string, text: string) => { if (path.endsWith('/Data/vault-tags.json')) { root.vaultTags = JSON.parse(text); return; } files[path] = text; save(); },
     remove: async (path: string) => { delete files[path]; save(); },
   },
-  getMarkdownFiles: () => [...handles.values()].filter(file => file.path.endsWith('.md')),
+  getMarkdownFiles: () => [...handles.values(), new TFile('Work/outside.md')].filter(file => file.path.endsWith('.md')),
   getAbstractFileByPath: (path: string) => handles.get(path),
   read: async (file: TFile) => files[file.path], cachedRead: async (file: TFile) => files[file.path],
   process: async (file: TFile, update: (text: string) => string) => {
@@ -31,6 +32,13 @@ const vault = {
   on: (event: string, listener: Function) => { (listeners[event] ||= []).push(listener); },
 };
 const app: any = { vault, workspace: { on() {}, onLayoutReady(callback: () => void) { callback(); }, getLeavesOfType: () => root.view ? [{ view: root.view }] : [], openLinkText: async (path: string) => { root.openedPath = path; } } };
+app.metadataCache = {
+  on() {},
+  getFileCache(file: TFile) {
+    if (file.path === 'Work/outside.md') return { tags: [{ tag: '#仓库外部/多级/标签' }], frontmatter: { tags: ['YAML标签'] } };
+    return { tags: [...(files[file.path] || '').matchAll(/(?:^|\s)#([\p{L}\p{N}_/-]+)/gu)].map(match => ({ tag: '#' + match[1] })) };
+  },
+};
 app.fileManager = {
   promptForDeletion: async (file: TFile) => {
     if (!window.confirm(file.path)) return false;

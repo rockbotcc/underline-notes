@@ -37,6 +37,19 @@
         <div id="sync-error" role="alert" hidden></div>
       </section>
       <form id="settings-form">
+        <section class="card" id="ai-tags">
+          <div class="section-title"><div><h2>大模型自动标签</h2><p>保存划线或笔记时，从整个 Obsidian 仓库的已有标签中选择，最多添加三个，不创建未知标签。</p></div></div>
+          <label class="toggle-row"><span><strong>自动添加已有标签</strong><small>默认关闭。先连接 Obsidian 仓库文件夹，并在 Obsidian 划线笔记插件中导出全仓库标签。标签为空时不调用模型。</small></span><input type="checkbox" id="ai-enabled" role="switch"><span class="switch" aria-hidden="true"></span></label>
+          <label class="field" for="ai-base-url">模型接口地址<span>支持 OpenAI 兼容 Chat Completions 接口，填写含版本路径的地址。</span></label>
+          <input type="url" id="ai-base-url" placeholder="https://your-provider.example/v1" maxlength="2000">
+          <label class="field" for="ai-api-key">API Key（本地模型可留空）</label>
+          <input type="password" id="ai-api-key" autocomplete="off" maxlength="4000">
+          <label class="field" for="ai-model">模型名称</label>
+          <input type="text" id="ai-model" placeholder="服务商提供的模型 ID" maxlength="200">
+          <p class="hint">从已连接目录的 Data/vault-tags.json 读取全仓库标签（正文 #标签及 YAML tags），不使用浏览器笔记或 flomo 标签库。Obsidian 关闭时使用最后导出的列表。开启后发送当前标题（最多 200 字）、批注（1800 字）、摘录（1200 字）和仓库标签名到所配置的服务。API Key 仅保存在本机，不进入备份或网页。标签追加到批注并随笔记同步；读取标签或模型调用失败时仍保存原笔记。</p>
+          <p id="ai-tag-error" role="status" hidden></p>
+          <div class="actions destination-actions"><button class="primary" type="submit">保存模型设置</button></div>
+        </section>
         <section class="card" id="reading">
           <div class="section-title"><div><h2>阅读记录</h2><p>使用本地 Obsidian 时，读过的文章会按天整理为 Markdown 阅读日志；flomo 不接收自动阅读记录。</p></div></div>
           <label class="toggle-row"><span><strong>自动记录阅读</strong><small>文章页在前台活跃约 15 秒后收录，闲置 60 秒暂停计时。</small></span><input type="checkbox" id="record-history" role="switch"><span class="switch" aria-hidden="true"></span></label>

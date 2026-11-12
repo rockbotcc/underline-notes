@@ -43,6 +43,10 @@ const editCard = async (id, label) => {
 };
 try {
   await page.goto(base); await waitFor(() => window.ready);
+  await page.evaluate(() => window.plugin.exportVocabulary());
+  const exportedTags = await page.evaluate(() => window.vaultTags);
+  assert.ok(exportedTags.tags.includes('仓库外部/多级/标签'));
+  assert.ok(exportedTags.tags.includes('YAML标签'));
   assert.equal(await page.locator('#view').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(247, 248, 246)', '卡片底色不被 Obsidian 的视图背景覆盖');
   assert.equal(requestCount, 0, '打开仓库不批量处理旧卡片');
   assert.equal(await page.getByRole('button', { name: '和 AI 讨论', exact: true }).count(), 0);
@@ -71,11 +75,13 @@ try {
   assert.ok(tagged.includes('用小步反馈改善架构 #手写'));
   assert.equal((tagged.match(/#手写/g) || []).length, 1, '不重复写入手动标签');
   assert.equal(tagRequests.length, 1);
+  assert.ok(JSON.parse(tagRequests[0].messages[1].content).reusableTags.includes('仓库外部/多级/标签'));
+  assert.ok(JSON.parse(tagRequests[0].messages[1].content).reusableTags.includes('YAML标签'));
   const afterSave = requestCount;
   await page.waitForTimeout(900);
   assert.equal(requestCount, afterSave, '自动标签自己的写入不重复调用模型');
   await card('one').getByRole('button', { name: '#领域/架构', exact: true }).click();
-  assert.equal(await page.locator('.nt-feed [data-memo-id]').count(), 1);
+  assert.equal(await page.locator('.nt-feed [data-memo-id]').count(), 2);
   await page.getByRole('button', { name: '全部笔记', exact: true }).click();
   await page.reload(); await waitFor(() => window.ready);
   await page.waitForTimeout(700);
@@ -83,7 +89,7 @@ try {
   assert.equal(await card('one').getByRole('button', { name: '#领域/架构', exact: true }).count(), 1);
   const tagNav = page.locator('.nt-tags-nav');
   await tagNav.getByRole('button', { name: '领域', exact: true }).click();
-  assert.equal(await page.locator('.nt-feed [data-memo-id]').count(), 1, '父领域筛选包含子标签');
+  assert.equal(await page.locator('.nt-feed [data-memo-id]').count(), 2, '父领域筛选包含子标签及已有词表卡片');
   await tagNav.getByRole('button', { name: '收起 领域', exact: true }).click();
   assert.equal(await tagNav.getByRole('button', { name: '领域/架构', exact: true }).count(), 0);
   await tagNav.getByRole('button', { name: '展开 领域', exact: true }).click();
@@ -131,6 +137,7 @@ try {
   for (const path of Object.keys(beforeOrganize)) assert.equal(withoutTags(afterOrganize[path]), withoutTags(beforeOrganize[path]), '整理只更新自动标签区域');
   assert.ok(tagRequests.at(-1).messages[1].content.includes('领域/知识管理'), '后续卡片复用整理后词表');
   await page.waitForFunction(() => document.querySelector('.nt-tags-nav')?.textContent.includes('知识管理'));
+  await page.waitForFunction(expected => [...document.querySelectorAll('.nt-tags-nav button')].some(button => button.textContent.replace(/\s/g, '') === '领域' + expected), Object.keys(beforeOrganize).length);
   assert.equal(await tagNav.getByRole('button', { name: '领域', exact: true }).locator('.nt-tag-count').textContent(), String(Object.keys(beforeOrganize).length));
   mode = 'normal';
   await page.locator('#view').screenshot({ path: 'test-results/auto-tags-desktop.png' });

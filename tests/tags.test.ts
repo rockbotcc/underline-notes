@@ -38,7 +38,7 @@ test('自动标签随卡片尾部保留，浏览器重新生成引用区域不�
 
 test('标签响应拒绝链接、标记注入、超限和保留命名空间', () => {
   assert.deepEqual(parseTags('```json\n{"tags":["架构","AI","ai","领域/主题"]}\n```'), ['架构', 'AI', '领域/主题']);
-  for (const tags of [['[链接](evil)'], ['<!-- noting:personal -->'], ['#标签'], ['noting/摘录'], ['123'], ['长'.repeat(33)], ['a','b','c','d','e','f']]) assert.throws(() => parseTags(JSON.stringify({ tags })));
+  for (const tags of [['[链接](evil)'], ['<!-- noting:personal -->'], ['#标签'], ['123'], ['a','b','c','d','e','f']]) assert.throws(() => parseTags(JSON.stringify({ tags })));
   assert.throws(() => parseTags('{"tags":"标签"}'));
 });
 
@@ -55,6 +55,12 @@ test('标签请求仅包含当前卡片有限内容，排除手写重复标签',
   assert.deepEqual(tags, ['领域/AI']);
 });
 
+test('已有分类内的未知标签也不能创建', async () => {
+  const memo = parse(localMemo('思考', 'a', '2026-11-05'));
+  const tags = await generateTags(memo, { ...DEFAULT_AI, baseUrl: 'https://model.example/v1', model: 'test' }, async () => ({ status: 200, text: JSON.stringify({ choices: [{ message: { content: '{"tags":["领域/未知","领域/写作"]}' } }] }) }), ['领域/写作']);
+  assert.deepEqual(tags, ['领域/写作']);
+});
+
 test('父标签包含后代且卡片计数去重，兼容旧的多级标签', () => {
   const memos = [['技术', '技术/AI', '技术/架构'], ['技术/AI/Agent'], ['技术栈/前端']].map(tags => ({ ...parse(localMemo('思考', 'a', '2026-11-05')), tags }));
   const tree = tagTree(memos);
@@ -65,16 +71,19 @@ test('父标签包含后代且卡片计数去重，兼容旧的多级标签', ()
   assert.equal(filterMemos(memos, '', '技术/A', 'all').length, 0);
 });
 
-test('共享词表有界，排除系统标签和非法层级', () => {
+test('全仓库词表支持普通标签、多级标签，不截断为 80 个', () => {
   const vocabulary = tagVocabulary([{ tags: ['noting/想法', '散标签', '领域/主题/细节', '领域/AI', '领域/ai', ...Array.from({ length: 100 }, (_, i) => '领域/主题' + i)] }]);
-  assert.equal(vocabulary.length, 80);
-  assert.equal(vocabulary[0], '领域/AI');
-  assert.ok(!vocabulary.includes('noting/想法'));
+  assert.equal(vocabulary.length, 104);
+  assert.ok(vocabulary.includes('领域/AI'));
+  assert.ok(vocabulary.includes('散标签'));
+  assert.ok(vocabulary.includes('领域/主题/细节'));
 });
 
-test('自动生成拒绝散标签、三级标签、未知领域和过量标签', async () => {
+test('自动生成接受任意已有层级，丢弃未知标签，拒绝过量标签', async () => {
   const memo = parse(localMemo('思考', 'a', '2026-11-05'));
-  for (const tags of [['散标签'], ['技术/AI'], ['收件箱/待整理'], ['收件箱', '领域/写作'], ['领域/AI/Agent'], ['随便新建领域/主题'], ['领域/A', '领域/B', '领域/C', '领域/D']]) {
-    await assert.rejects(generateTags(memo, { ...DEFAULT_AI, baseUrl: 'https://model.example/v1', model: 'test' }, async () => ({ status: 200, text: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ tags }) } }] }) })), /标签格式无效/);
-  }
+  const settings = { ...DEFAULT_AI, baseUrl: 'https://model.example/v1', model: 'test' };
+  const transport = (tags: string[]) => async () => ({ status: 200, text: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ tags }) } }] }) });
+  assert.deepEqual(await generateTags(memo, settings, transport(['普通标签', '技术/AI/Agent', '未知']), ['普通标签', '技术/AI/Agent']), ['普通标签', '技术/AI/Agent']);
+  await assert.rejects(generateTags(memo, settings, transport(['a', 'b', 'c', 'd']), ['a']), /标签格式无效/);
+  assert.deepEqual(await generateTags(memo, settings, async () => { throw new Error('不应调用'); }, []), []);
 });
