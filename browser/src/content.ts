@@ -13,6 +13,20 @@ const shadow = host.attachShadow({ mode: 'open' });
 const style = document.createElement('style');
 style.textContent = css;
 shadow.append(style);
+// Shadow DOM retargets keyboard events to the host, so page shortcuts may
+// mistake typing in our textareas for commands outside an editable field.
+// Keep native editing/IME behavior and our own target handlers intact.
+for (const type of ['keydown', 'keypress', 'keyup']) {
+  shadow.addEventListener(type, event => {
+    event.stopPropagation();
+    const key = event as KeyboardEvent;
+    if (type === 'keydown' && key.key === 'Escape' && !key.isComposing) {
+      toolbar.hidden = true;
+      imageToolbar.hidden = true;
+      closeEditor();
+    }
+  });
+}
 document.documentElement.append(host);
 const highlightStyle = document.createElement('style');
 highlightStyle.dataset.notingRoot = '';
@@ -330,7 +344,10 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
     finally { save.disabled = false; }
   }, 'primary');
   input.addEventListener('keydown', event => {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') save.click();
+    if (!event.isComposing && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      save.click();
+    }
   });
   actions.append(save);
   editor.append(header);
@@ -417,7 +434,10 @@ function renderPanel(focusNote = false) {
         renderPanel();
       });
       note.addEventListener('keydown', event => {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') saveNote.click();
+        if (!event.isComposing && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          saveNote.click();
+        }
       });
       const actions = element('div', 'actions page-note-actions');
       actions.append(cancelNote, saveNote);
@@ -541,7 +561,7 @@ document.addEventListener('click', event => {
   }
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { toolbar.hidden = true; imageToolbar.hidden = true; closeEditor(); }
+  if (event.key === 'Escape' && !event.isComposing) { toolbar.hidden = true; imageToolbar.hidden = true; closeEditor(); }
 });
 window.addEventListener('scroll', () => { toolbar.hidden = true; imageToolbar.hidden = true; }, { passive: true });
 window.addEventListener('beforeunload', event => {

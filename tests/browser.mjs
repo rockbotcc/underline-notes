@@ -95,6 +95,42 @@ async function waitForPageNote(options, note) {
   }, note);
 }
 
+async function checkKeyboardIsolation(page, input) {
+  await page.evaluate(() => {
+    window.noteTestKeys = [];
+    window.noteTestListener = event => {
+      // A typical page shortcut checks event.target, which is the shadow host.
+      if (!event.target.matches('input, textarea, [contenteditable="true"]')) {
+        window.noteTestKeys.push(event.type + ':' + event.key);
+      }
+    };
+    for (const type of ['keydown', 'keypress', 'keyup']) document.addEventListener(type, window.noteTestListener);
+  });
+  await input.fill('');
+  await input.pressSequentially('draft');
+  await input.press('Enter');
+  await input.pressSequentially('text');
+  assert.equal(await input.inputValue(), 'draft\ntext', '隔离快捷键不能阻止输入和换行');
+  await input.evaluate(node => {
+    node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, isComposing: true, bubbles: true, composed: true }));
+    node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, composed: true }));
+  });
+  assert.ok(await input.isVisible(), '输入法确认和取消候选时不能保存或关闭编辑器');
+  assert.deepEqual(await page.evaluate(() => window.noteTestKeys), [], '笔记按键不能触发网页快捷键');
+  assert.equal(await page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  }), true, '真正离开页面时仍须保护未保存草稿');
+  await page.locator('#quote').dispatchEvent('keydown', { key: 'd', bubbles: true });
+  assert.deepEqual(await page.evaluate(() => window.noteTestKeys), ['keydown:d'], '网页自身快捷键不受影响');
+  await page.evaluate(() => {
+    for (const type of ['keydown', 'keypress', 'keyup']) document.removeEventListener(type, window.noteTestListener);
+    delete window.noteTestListener;
+    delete window.noteTestKeys;
+  });
+}
+
 try {
   let { worker, id } = await launch();
   const options = await context.newPage();
@@ -154,9 +190,13 @@ try {
   assert.equal(await highlightEditor.locator('.note-hint').count(), 0, '复述提示仅显示在输入框占位符中');
   assert.equal(await highlightNote.getAttribute('placeholder'), '可以先用自己的话复述原文，再补充理解或评论。支持 Markdown。');
   await page.screenshot({ path: path.join(output, 'note-hint-empty.png') });
+  await checkKeyboardIsolation(page, highlightNote);
+  page.once('dialog', dialog => dialog.dismiss());
+  await highlightNote.press('Escape');
+  assert.equal(await highlightNote.inputValue(), 'draft\ntext', 'Escape 取消关闭后保留草稿');
   await highlightNote.fill('这句话可以用在设计评审中。');
   await page.screenshot({ path: path.join(output, 'note-hint-filled.png') });
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await highlightNote.press('Control+Enter');
   await page.locator('.card .note').filter({ hasText: '这句话可以用在设计评审中。' }).waitFor();
   assert.equal(await page.locator('.panel textarea').count(), 0, '阅读笔记时不应显示输入框');
   const annotationText = page.locator('.card .note .note-text').first();
@@ -173,6 +213,8 @@ try {
   if (!process.env.NOTING_NATIVE_PICKER) await page.locator('.output-status').filter({ hasText: '连接笔记文件夹后可自动写入' }).waitFor();
   await page.getByRole('button', { name: '编辑文章笔记', exact: true }).click();
   const pageNote = page.getByRole('textbox', { name: '文章笔记', exact: true });
+  await checkKeyboardIsolation(page, pageNote);
+  console.log('PASS 两种笔记键盘隔离、原生换行、输入法和未保存草稿保护');
   const pageHint = page.locator('#page-note-hint');
   await pageHint.waitFor({ state: 'visible' });
   assert.match(await pageHint.textContent(), /复述文章的要点/);
