@@ -1,6 +1,6 @@
 # 划线笔记 / Underline Notes
 
-在 Chrome 中给网页划线、写批注，把摘录保存到自己选的文件夹。默认写入本地 Obsidian 文件夹，每条摘录都是可以用文本编辑器打开的 Markdown 文件。也可在浏览器扩展设置中改为写入 flomo，使用 flomo 在不同设备上回顾。想按卡片回顾时，再用 Obsidian 打开同一个文件夹，启用配套插件即可。
+在 Chrome 中给网页划线、写批注，把摘录保存到本地文件夹或写入 flomo。默认使用本地文件夹，每条摘录都是可以用文本编辑器打开的 Markdown 文件；想按卡片回顾时，再用 Obsidian 打开同一个文件夹，启用配套插件即可。选择 flomo 则可在不同设备上回顾，无需配置本地文件夹或安装 Obsidian。
 
 浏览器扩展和 Obsidian 插件均支持可选的自动标签，只能从已有标签中选择，不允许模型创建未知标签。配置模型并开启该功能后，保存笔记时会把当前卡片的部分内容发送到所选模型服务。
 
@@ -10,20 +10,26 @@
 
 | 下载 | 用途 |
 | --- | --- |
-| [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip) | 网页划线、批注和本地保存 |
+| [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip) | 网页划线、批注，保存到本地文件夹或写入 flomo |
 | [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip) | 在 Obsidian 1.6+ 中按卡片浏览已有摘录 |
 
-**让 Codex 帮你安装。** 可以直接把这句话发给 Codex：
+**让 Codex 帮你安装。** 按希望的保存位置，任选一句发给 Codex：
+
+保存到本地文件夹（以后也可用 Obsidian 回顾）：
 
 > 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记，把摘录保存到文稿里的「划线笔记」文件夹。
 
-确认摘录已保存到本地后，Codex 会问你是否要用 Obsidian 回顾。你可以选择安装 Obsidian 和配套插件、只给已有的 Obsidian 安装插件，或只用 Chrome。如果 Chrome 已装好，只需说「继续为刚才的笔记文件夹安装 Obsidian 插件，并打开卡片盒」。
+写入 flomo：
+
+> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记，把摘录写入 flomo，并引导我在扩展设置中填写 flomo API URL。
+
+选择本地文件夹时，确认摘录已保存后，Codex 会问你是否要用 Obsidian 回顾。你可以选择安装 Obsidian 和配套插件、只给已有的 Obsidian 安装插件，或只用 Chrome。如果 Chrome 已装好，只需说「继续为刚才的笔记文件夹安装 Obsidian 插件，并打开卡片盒」。选择 flomo 时，在 flomo 中确认收到测试笔记即可完成安装；需要账号具备相应 API 权限，详见[写入 flomo](#写入-flomo)。
 
 **手动安装**
 
 1. **安装 Chrome 扩展。** 下载上方 Chrome ZIP，将它解压到长期保留的文件夹，例如「应用工具/划线笔记扩展」。在地址栏打开 `chrome://extensions`，开启「开发者模式」，点击「加载已解压的扩展程序」，选择解压后能直接看到 `manifest.json` 的文件夹。将扩展固定到工具栏，并保留这个文件夹。
-2. **保存到本地文件夹。** 打开扩展「选项」→「选择笔记文件夹」。在系统窗口中新建「划线笔记」，或选一个已有文件夹并允许读写。在网页上划线并保存批注，点击「立即同步笔记」，即可在所选目录的 `Reading/Cards/` 中打开对应的 Markdown 文件。到这里就可以日常使用了。
-3. **可选：用 Obsidian 看卡片。** 下载上方 Obsidian ZIP 并解压。在 Obsidian 中选择「打开本地仓库」（Open folder as vault），打开第 2 步选的笔记文件夹。进入「设置 → 第三方插件」，打开插件文件夹，把解压得到的 `noting` 文件夹放进去（最终位置为 `.obsidian/plugins/noting/main.js`）。退出仓库的限制模式（如已开启），刷新已安装插件列表，启用「划线笔记 / Underline Notes」，再打开 `Reading/卡片盒.md`。
+2. **选择笔记写入位置。** 打开扩展「选项」。保存到本地时，保留默认的「本地 Obsidian」，点击「选择笔记文件夹」，新建「划线笔记」或选择已有文件夹并允许读写；在网页上划线并保存批注，点击「立即同步笔记」，在所选目录的 `Reading/Cards/` 中核对 Markdown 文件。写入 flomo 时，选择「flomo」，填写自己的 API URL 并点击「保存写入设置」；随后新建一条笔记，在 flomo 中核对内容，具体见[写入 flomo](#写入-flomo)。完成任一方式的验证后即可日常使用。
+3. **本地保存可选：用 Obsidian 看卡片。** 下载上方 Obsidian ZIP 并解压。在 Obsidian 中选择「打开本地仓库」（Open folder as vault），打开第 2 步选的笔记文件夹。进入「设置 → 第三方插件」，打开插件文件夹，把解压得到的 `noting` 文件夹放进去（最终位置为 `.obsidian/plugins/noting/main.js`）。退出仓库的限制模式（如已开启），刷新已安装插件列表，启用「划线笔记 / Underline Notes」，再打开 `Reading/卡片盒.md`。
 
 升级已有安装或使用自定义 Obsidian 配置目录时，请参见[本地安装指南](INSTALL.md)。
 
@@ -71,8 +77,8 @@ AI 从整个仓库的已有标签中选择最多三个，并跳过重复的手�
 1. 在普通网页中选中文字，点击浮动工具条的颜色进行划线，或点击「记笔记」同时保存批注。
    将鼠标移到网页图片上（至少 48 × 48 像素），点击「收录图片」直接收录，或点击「记笔记」预览图片、写下批注再保存。图片记录可在本页侧栏继续编辑、定位原图或删除，连接笔记文件夹后会生成带图片的独立卡片，并出现在「按来源」的缩略图中。
 2. 点击已有高亮查看批注；双击笔记内容或点击右上角铅笔进入编辑，可修改颜色或删除。点击 Chrome 工具栏的「划线笔记 / Underline Notes」图标打开本页侧栏，文章笔记和批注默认以文本完整展开，双击内容或点击铅笔即可添加、修改笔记。
-3. 在侧栏打开「设置与文件写入」，选择存放笔记的本地文件夹。扩展会创建 `Reading` 子文件夹。
-4. 如果使用 Obsidian，检查仓库名称与 Obsidian 显示的名称一致。在 Obsidian 中打开 `Reading/卡片盒.md`，以阅读视图直接浏览展开的卡片。每张卡片也能单独打开、链接和补写。
+3. 在侧栏打开「设置与文件写入」，选择笔记写入位置。本地保存需要选择文件夹，扩展会创建 `Reading` 子文件夹；写入 flomo 则按[写入 flomo](#写入-flomo)配置 API URL，配置后新增或修改的笔记才会发送，已有笔记不会批量补发。
+4. 本地保存且使用 Obsidian 时，检查仓库名称与 Obsidian 显示的名称一致。在 Obsidian 中打开 `Reading/卡片盒.md`，以阅读视图直接浏览展开的卡片。每张卡片也能单独打开、链接和补写。选择 flomo 时，直接在 flomo 中回顾已写入的笔记。
 
 工具条与侧栏交互参考 Web Highlights。支持跨文本节点和段落的划线。弹窗中的笔记可用 Command/Ctrl + Enter 保存。
 
