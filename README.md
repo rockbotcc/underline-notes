@@ -39,8 +39,12 @@
 
 - `browser/` 包含 Chrome 扩展的清单、设置页和源码。`obsidian/` 包含社区插件的源码与样式。两端共用的笔记模型、Markdown 格式和同步函数在 `shared/`。
 - 运行 `npm run check && npm test && npm run build` 验证两个插件。测试需要支持 TypeScript 类型剥离的 Node.js，例如 Node.js 22.18 及以上版本。
-- Chrome Web Store 使用 `browser/manifest.json` 中的版本号。构建后，在项目根目录运行 `(cd dist && zip ../underline-notes-chrome-0.4.0.zip manifest.json background.js content.js options.js options.html options.css icons/*.png)`。商店文案、截图和审核说明见 [Chrome 发布材料](store/chrome/listing.md)，扩展的数据处理说明见[隐私政策](PRIVACY.md)。
-- Obsidian 社区目录读取仓库根目录的 `manifest.json`。发布时同步维护 `versions.json` 的最低兼容版本，在 GitHub 创建与插件版本完全相同的 Release 标签（如 `0.4.0`），并分别上传 `dist-obsidian/noting/` 下的 `main.js`、`manifest.json` 和 `styles.css`。首次上架还需向 [Obsidian 社区目录](https://github.com/obsidianmd/obsidian-releases) 提交插件信息。
+- Chrome Web Store 使用 `browser/manifest.json` 中的版本号。运行 `npm run build` 和 `node scripts/package-release.mjs`，上传生成的 `dist-release/underline-notes-chrome.zip`；包内包含 `LICENSE`、`NOTICE` 和第三方依赖的 `THIRD_PARTY_LICENSES.txt`。商店文案、截图和审核说明见 [Chrome 发布材料](store/chrome/listing.md)，扩展的数据处理说明见[隐私政策](PRIVACY.md)。
+- Obsidian 社区目录读取仓库根目录的 `manifest.json`。发布时同步维护 `versions.json` 的最低兼容版本，在 GitHub 创建与插件版本完全相同的 Release 标签（如 `0.4.0`），并分别上传 `dist-release/` 下的 `main.js`、`manifest.json`、`styles.css`、`LICENSE` 和 `NOTICE`。Obsidian ZIP 也包含许可证与署名文件；独立更新使用的 `main.js` 内嵌完整许可证和 NOTICE。首次上架还需向 [Obsidian 社区目录](https://github.com/obsidianmd/obsidian-releases) 提交插件信息。
+
+## 开源许可
+
+Copyright 2026 rockbotcc。本项目采用 [Apache License 2.0](LICENSE)，作者与项目来源见 [NOTICE](NOTICE)。分发原版或修改版时，请遵守协议，附带许可证、保留适用的版权和署名声明，并在修改过的文件中明确标注修改。第三方组件沿用各自的许可证。
 
 ## 卡片盒体验
 

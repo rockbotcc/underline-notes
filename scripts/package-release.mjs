@@ -16,9 +16,9 @@ await readFile(`releases/${version}.md`, 'utf8');
 const output = path.resolve('dist-release');
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
-execFileSync('zip', ['-q', '-r', path.join(output, 'underline-notes-chrome.zip'), 'manifest.json', 'background.js', 'content.js', 'options.js', 'options.html', 'options.css', 'icons'], { cwd: 'dist' });
-execFileSync('zip', ['-q', path.join(output, 'underline-notes-obsidian.zip'), 'noting/main.js', 'noting/manifest.json', 'noting/styles.css'], { cwd: 'dist-obsidian' });
-for (const name of ['main.js', 'manifest.json', 'styles.css']) await copyFile(`dist-obsidian/noting/${name}`, path.join(output, name));
+execFileSync('zip', ['-q', '-r', path.join(output, 'underline-notes-chrome.zip'), 'manifest.json', 'background.js', 'content.js', 'options.js', 'options.html', 'options.css', 'icons', 'LICENSE', 'NOTICE', 'THIRD_PARTY_LICENSES.txt'], { cwd: 'dist' });
+execFileSync('zip', ['-q', path.join(output, 'underline-notes-obsidian.zip'), 'noting/main.js', 'noting/manifest.json', 'noting/styles.css', 'noting/LICENSE', 'noting/NOTICE'], { cwd: 'dist-obsidian' });
+for (const name of ['main.js', 'manifest.json', 'styles.css', 'LICENSE', 'NOTICE']) await copyFile(`dist-obsidian/noting/${name}`, path.join(output, name));
 const checksums = [];
 for (const name of (await readdir(output)).sort()) {
   if (name.endsWith('.zip')) execFileSync('unzip', ['-tq', path.join(output, name)]);

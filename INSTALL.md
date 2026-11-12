@@ -29,7 +29,7 @@
 
 1. Codex 默认下载 [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip)。用户选用卡片视图时，再下载 [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip)。GitHub 自动附带的 Source code 是开发用源码。若直链暂时不可用，到 Release 页的 Assets 栏查找以上两个同名 ZIP；无法获取时说明原因，仅在用户明确选择源码安装时构建。
 2. 记录所选 Release 的版本；如发布资产提供 SHA-256，先比对下载文件的摘要。分别解压到临时目录。Chrome 包的根目录应有 Manifest V3 的 `manifest.json`、脚本、设置页及 `icons/`。把这些内容放入第 1 步确定的固定扩展目录。升级时先备份原安装文件，在原位置更新并点击「重新加载」，保留原来的 Chrome 扩展条目。
-3. Obsidian 包解压后的 `noting/` 应包含 `main.js`、`manifest.json`、`styles.css`，清单的插件 ID 为 `noting`。按下方可选步骤安装。
+3. Obsidian 包解压后的 `noting/` 应包含 `main.js`、`manifest.json`、`styles.css`，清单的插件 ID 为 `noting`。新发布包还包含 `LICENSE` 和 `NOTICE`，安装时一并保留。按下方可选步骤安装。
 
 ## 3. 加载 Chrome 扩展并验证笔记写入
 
@@ -61,9 +61,9 @@
 1. **确认笔记目录和版本。** 使用 Chrome 已授权、直接包含 `Reading/` 的文件夹。优先沿用刚才安装时记录的绝对路径；如果路径不明且有同名文件夹，请用户点选。按第 2 步下载并核对与 Chrome 扩展同版本 Release 中的 `underline-notes-obsidian.zip`。
 2. **先在 Obsidian 打开这个文件夹。** 若已登记为仓库，直接切换到它。首次使用时，在欢迎页选择「打开本地仓库」（Open folder as vault）；已经打开其他仓库时，点击仓库名 →「管理仓库」（Manage vaults…）→「Open folder as vault」旁的「Open」。选中上述笔记目录，在新窗口核对仓库名称。只有完成这一步后，Chrome 里的「用 Obsidian 打开」链接才能定位仓库。若看到 `Vault not found`，关闭提示，按本步打开文件夹。
 3. **安装插件文件。** 默认位置是仓库下的 `.obsidian/plugins/noting/`。如果使用自定义配置目录，以 Obsidian「第三方插件 → 打开插件文件夹」显示的位置为准。若已安装，先在 Obsidian 中停用插件，把现有插件目录备份到 `plugins/` 以外的本地位置，并记下备份路径。
-   创建目标目录，把解压所得 `noting/` 中的三个文件逐个复制进去。只更新这三个文件，保留已有的 `data.json`（可能包含模型凭据）和其他用户文件。备份也应留在本机。
+   创建目标目录，把解压所得 `noting/` 中的 `main.js`、`manifest.json`、`styles.css` 及随包提供的 `LICENSE`、`NOTICE` 逐个复制进去。只更新这些发布文件，保留已有的 `data.json`（可能包含模型凭据）和其他用户文件。备份也应留在本机。
 
-4. **启用插件。** 核对复制的三个文件与发布包一致。在目标仓库进入「设置 → 第三方插件」（Community plugins）。若处于限制模式，点击「退出限制模式」（Exit Restricted mode）。点击已安装插件列表旁的「刷新插件」（Reload plugins），再启用「划线笔记 / Underline Notes」。若列表仍未出现插件，核对配置目录及文件层级后重新打开仓库。
+4. **启用插件。** 核对复制的文件与发布包一致。在目标仓库进入「设置 → 第三方插件」（Community plugins）。若处于限制模式，点击「退出限制模式」（Exit Restricted mode）。点击已安装插件列表旁的「刷新插件」（Reload plugins），再启用「划线笔记 / Underline Notes」。若列表仍未出现插件，核对配置目录及文件层级后重新打开仓库。
 
 5. **验证卡片盒。** 在 Obsidian 打开 `Reading/卡片盒.md`，检查刚才的摘录和批注是否出现。同步需要 Chrome 运行且文件夹授权有效。若看不到卡片，先检查扩展设置中的连接状态和待写入项，再确认 Obsidian 打开的是同一仓库。
 
