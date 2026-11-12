@@ -42,7 +42,11 @@ try {
   await options.uncheck('#record-history');
   await options.getByRole('button', { name: '保存写入设置', exact: true }).click();
   await options.getByText('设置已保存。', { exact: true }).waitFor();
-  assert.equal(await options.locator('#choose-directory').isVisible(), false);
+  // flomo can optionally read vault tags, but sending notes needs no folder.
+  await options.getByRole('button', { name: '连接 Obsidian 文件夹以读取标签', exact: true }).waitFor();
+  assert.equal(await options.locator('#local-flow').isVisible(), false);
+  assert.equal(await options.locator('#restore-directory').isVisible(), false);
+  assert.equal((await call({ type: 'STATUS' })).directoryName, '');
   await options.reload();
   await options.waitForFunction(() => document.querySelector('#output-target').value === 'flomo');
   assert.equal(await options.inputValue('#flomo-api-url'), 'https://flomoapp.com/iwh/test/secret/');
