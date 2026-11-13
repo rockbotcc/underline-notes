@@ -4,7 +4,8 @@
 
 ## 从哪一步开始
 
-- **首次安装 Chrome**：从第 1 步开始，在第 3 步按本地文件夹或 flomo 分别配置和验证。用户选择本地保存并要求用 Obsidian 回顾时，完成第 3 步后继续安装插件。
+- **首次安装 Chrome**：从第 1 步开始，在第 3 步按本地文件夹、flomo 或思源分别配置和验证。用户选择本地保存并要求用 Obsidian 回顾时，完成第 3 步后继续安装插件。
+- **安装思源卡片盒**：直接从下文「思源卡片盒插件」开始；仅使用随手记时无需安装 Chrome。
 - **Chrome 已能保存摘录，现在要加装 Obsidian**：直接从下文「用 Obsidian 打开已有笔记」开始。沿用 Chrome 已授权的目录和已有摘录，不必重新加载扩展、选择文件夹或制作测试卡片。
 
 用户选择 flomo 时，只需确定扩展安装目录，跳过本地笔记目录准备、文件夹授权和 Obsidian 引导。按第 3 步的 flomo 分支配置并核对写入结果即可。
@@ -27,7 +28,7 @@
 
 ## 2. 下载并核对发布包
 
-1. Codex 默认下载 [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip)。用户选用卡片视图时，再下载 [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip)。GitHub 自动附带的 Source code 是开发用源码。若直链暂时不可用，到 Release 页的 Assets 栏查找以上两个同名 ZIP；无法获取时说明原因，仅在用户明确选择源码安装时构建。
+1. Codex 默认下载 [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip)。用户选用 Obsidian 卡片视图时，再下载 [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip)。思源用户下载 [思源插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-siyuan.zip)。GitHub 自动附带的 Source code 是开发用源码。若直链暂时不可用，到 Release 页的 Assets 栏查找对应的同名 ZIP；无法获取时说明原因，仅在用户明确选择源码安装时构建。
 2. 记录所选 Release 的版本；如发布资产提供 SHA-256，先比对下载文件的摘要。分别解压到临时目录。Chrome 包的根目录应有 Manifest V3 的 `manifest.json`、脚本、设置页及 `icons/`。把这些内容放入第 1 步确定的固定扩展目录。升级时先备份原安装文件，在原位置更新并点击「重新加载」，保留原来的 Chrome 扩展条目。
 3. Obsidian 包解压后的 `noting/` 应包含 `main.js`、`manifest.json`、`styles.css`，清单的插件 ID 为 `noting`。新发布包还包含 `LICENSE` 和 `NOTICE`，安装时一并保留。按下方可选步骤安装。
 
@@ -77,14 +78,14 @@
 **给执行安装的 Codex：** 完成能够执行的下载、解压、文件复制和核对，并提供本次实际使用的绝对路径。遇到浏览器目录授权等必须由用户操作的界面时，指出要点击的按钮和要选择的目录。按用户选的模式报告结果。普通文件夹模式以看到正确的 Markdown 笔记为准；选择卡片模式时，再验证同一条摘录出现在 Obsidian 卡片盒中；flomo 模式以在 flomo 中看到正确的笔记为准，API URL 由用户在扩展设置中填写。
 
 
-## 思源卡片盒插件（源码开发版）
+## 思源卡片盒插件
 
-需要思源 3.8.10+、Node.js 22.18+；当前思源功能尚未发布到集市或 GitHub Release。完整图文结构及操作说明见 [README：思源插件安装与使用](README.md#思源插件安装与使用)。
+需要思源 3.8.10+；从 0.5.0 起提供 GitHub Release 安装包，无需 Node.js，尚未上架集市。完整图文结构及操作说明见 [README：思源插件安装与使用](README.md#思源插件安装与使用)。
 
-1. 在源码目录运行 `npm ci`、`npm run build`。将整个 `dist-siyuan/underline-notes/` 复制到目标工作空间的 `data/plugins/`，核对最终位置是 `data/plugins/underline-notes/plugin.json`，不要多套一层目录。
-2. 已有安装时先停用插件，备份旧插件文件夹到 `data/plugins/` 外，再复制新构建文件。保留 `data/storage/petal/underline-notes/` 中的草稿、目标笔记本及保存状态。
+1. 下载 [思源插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-siyuan.zip)，核对同一 Release 的 `SHA256SUMS.txt` 后解压。将整个 `underline-notes/` 文件夹复制到目标工作空间的 `data/plugins/`，核对最终位置是 `data/plugins/underline-notes/plugin.json`，不要多套一层目录。
+2. 已有安装时先停用插件，备份旧插件文件夹到 `data/plugins/` 外，再复制新发布包文件。保留 `data/storage/petal/underline-notes/` 中的草稿、目标笔记本及保存状态。
 3. 在思源「设置 → 集市」完成首次信任提示，进入「已下载 → 插件」启用「划线笔记」。列表未出现时重启思源。升级后关闭旧卡片盒页签，再点击顶部卡片盒图标或通过命令面板打开。
 4. 核对随手记输入框、搜索和「每日回顾」入口。插件无需填写 Token；选择目标笔记本即可记录独立想法，支持 ⌘/Ctrl + Enter。获准写入测试数据时，用一条随手记验证保存、搜索、打开原文和回顾；不要自动向日常笔记添加演示内容。
-5. 若用户需要网页采集，加载本次构建的 `dist/` Chrome 扩展，并配置思源地址、Token 和目标笔记本，详见前文「思源笔记」输出步骤。
+5. 若用户需要网页采集，下载同一 Release 的 Chrome 扩展 ZIP 并按前文步骤安装，并配置思源地址、Token 和目标笔记本，详见前文「思源笔记」输出步骤。
 
-工作空间是包含 `conf/`、`data/` 的目录，不要将 Obsidian Markdown 文件直接放进思源笔记本目录。插件只显示划线笔记写入的原生卡片；普通文档不自动导入。可运行 `node scripts/package-release.mjs` 生成本地 ZIP，解压后同样安装整个 `underline-notes` 文件夹。
+工作空间是包含 `conf/`、`data/` 的目录，不要将 Obsidian Markdown 文件直接放进思源笔记本目录。插件只显示划线笔记写入的原生卡片；普通文档不自动导入。开发者可用 Node.js 22.18+ 运行 `npm ci`、`npm run build`，再运行 `node scripts/package-release.mjs` 生成本地 ZIP，解压后同样安装整个 `underline-notes` 文件夹。

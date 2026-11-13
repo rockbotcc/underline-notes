@@ -6,8 +6,8 @@
 
 需要思源 3.8.10 或更新版本；第一版支持桌面端和桌面浏览器。
 
-1. 将插件文件夹 `underline-notes` 放入工作空间的 `data/plugins/`。
-   源码安装先在项目根目录运行 `npm ci`、`npm run build`，取 `dist-siyuan/underline-notes/`；当前尚未发布到集市。
+1. 下载 [思源插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-siyuan.zip)（0.5.0 起提供），核对发布页的 `SHA256SUMS.txt` 并解压，将插件文件夹 `underline-notes` 放入工作空间的 `data/plugins/`。
+   发布包无需构建，当前尚未上架集市。开发者可在项目根目录运行 `npm ci`、`npm run build`，安装 `dist-siyuan/underline-notes/`。
 2. 在思源「设置 → 集市 → 已下载 → 插件」中启用「划线笔记」。首次使用插件时按思源提示确认信任；如未出现，核对 `data/plugins/underline-notes/plugin.json` 层级并重启思源。
 3. 点击顶部「划线笔记 · 卡片盒」按钮，或通过命令面板打开卡片盒。
 
@@ -41,6 +41,6 @@
 
 第一版没有双向编辑、附件上传、自动标签、移动端卡片盒。图片摘录仍是原图链接。卸载插件不会删除原生卡片或已保存想法。
 
-升级前停用插件并备份旧插件目录，复制新文件后启用，关闭旧卡片盒页签再打开。不要覆盖 `data/storage/petal/underline-notes/`。
+升级前停用插件并备份旧插件目录，复制新发布包文件后启用，关闭旧卡片盒页签再打开。不要覆盖 `data/storage/petal/underline-notes/`。
 
 源码采用 Apache-2.0，见 LICENSE 与 NOTICE。

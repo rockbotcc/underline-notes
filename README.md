@@ -6,12 +6,12 @@
 
 ## 本地安装
 
-桌面版 Chrome 120+ 可直接安装发布包。Obsidian 用户可下载配套插件；思源功能目前在源码开发版中，按下方说明构建安装。
+桌面版 Chrome 120+ 可直接安装发布包。Obsidian 和思源用户可下载对应的卡片盒插件，无需构建源码。
 
 | 下载 | 用途 |
 | --- | --- |
-| [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip) | 网页划线、批注，保存到本地文件夹或写入 flomo |
-| [思源插件安装说明](#思源插件安装与使用) | 思源 3.8.10+ 卡片流、随手记、每日回顾（源码开发版） |
+| [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip) | 网页划线、批注，保存到本地文件夹或写入 flomo、思源 |
+| [思源插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-siyuan.zip) | 思源 3.8.10+ 卡片流、随手记、每日回顾；[安装说明](#思源插件安装与使用) |
 | [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip) | 在 Obsidian 1.6+ 中按卡片浏览已有摘录 |
 
 **让 Codex 帮你安装。** 按希望的保存位置，任选一句发给 Codex：
@@ -36,7 +36,7 @@
 
 ## 源码与发布
 
-正式版本通过 GitHub Actions 发布：同步更新 npm、Chrome、Obsidian、思源的版本号及 `versions.json`，添加 `releases/<版本>.md`，再推送与版本号一致的 Git 标签（不加 `v`）。工作流会执行类型检查、单元测试和 flomo 浏览器测试，生成 Chrome、Obsidian、思源三个安装 ZIP、Obsidian 更新文件及 SHA-256 校验文件，并创建 Release。本地可先运行 `npm run build` 和 `node scripts/package-release.mjs` 检查 `dist-release/` 中的产物。
+正式版本通过 GitHub Actions 发布：同步更新 npm、Chrome、Obsidian、思源的版本号及 `versions.json`，添加 `releases/<版本>.md`，再推送与版本号一致的 Git 标签（不加 `v`）。工作流会执行类型检查、单元测试、flomo 与思源扩展浏览器测试，生成 Chrome、Obsidian、思源三个安装 ZIP、Obsidian 更新文件及 SHA-256 校验文件，并创建 Release。本地可先运行 `npm run build` 和 `node scripts/package-release.mjs` 检查 `dist-release/` 中的产物。
 
 - `browser/` 包含 Chrome 扩展的清单、设置页和源码。`obsidian/` 包含社区插件的源码与样式。`siyuan/` 包含思源卡片盒插件。各端共用的笔记模型、Markdown 格式和同步函数在 `shared/`。
 - 运行 `npm run check && npm test && npm run build` 验证所有端的源码。测试需要支持 TypeScript 类型剥离的 Node.js，例如 Node.js 22.18 及以上版本。
@@ -190,16 +190,10 @@ npm run test:obsidian
 
 ## 思源插件安装与使用
 
-需要桌面版思源 **3.8.10+**。思源输出及配套插件目前属于源码开发版，尚未上架集市或发布到 GitHub Release；上方旧版下载包不包含这些新增功能。实际验收环境为 macOS ARM64、思源 3.8.10。
+需要桌面版思源 **3.8.10+**。从 **0.5.0** 起提供正式发布包，尚未上架思源集市。实际验收环境为 macOS ARM64、思源 3.8.10。
 
-1. **构建插件。** 安装 Node.js 22.18+，在本项目源码目录运行：
-
-   ```sh
-   npm ci
-   npm run build
-   ```
-
-2. **找到思源工作空间。** 使用思源当前工作空间的根目录（包含 `conf/`、`data/`），将构建得到的整个 `dist-siyuan/underline-notes/` 文件夹复制到其中的 `data/plugins/`。最终应直接存在：
+1. **下载安装包。** 下载 [思源插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-siyuan.zip) 并解压，得到 `underline-notes` 文件夹。使用发布包无需 Node.js 或源码构建；请勿将 GitHub 自动生成的 Source code 当作插件包。发布页同时提供 `SHA256SUMS.txt` 供校验。
+2. **找到思源工作空间。** 使用思源当前工作空间的根目录（包含 `conf/`、`data/`），将解压得到的整个 `underline-notes/` 文件夹复制到其中的 `data/plugins/`。最终应直接存在：
 
    ```text
    <思源工作空间>/data/plugins/underline-notes/plugin.json
@@ -211,7 +205,7 @@ npm run test:obsidian
 
 3. **启用插件。** 打开「设置 → 集市 → 已下载 → 插件」，启用「划线笔记」。首次使用插件时按思源提示确认信任；若列表未出现插件，核对上述层级后重启思源。
 4. **打开卡片盒。** 点击顶部「划线笔记 · 卡片盒」图标，或通过命令面板打开。插件本身无需 API Token，也不依赖 Chrome，可直接使用随手记。
-5. **可选：连接网页采集。** 加载本次构建的 `dist/` Chrome 扩展，在扩展设置中选择思源，填写地址、Token 和目标笔记本，按[写入思源笔记](#写入思源笔记)验证。采集时需保持思源运行。
+5. **可选：连接网页采集。** 下载同一 Release 的 [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip)，按上方手动安装步骤加载，在扩展设置中选择思源，填写地址、Token 和目标笔记本，按[写入思源笔记](#写入思源笔记)验证。采集时需保持思源运行。
 
 **日常操作**
 
@@ -220,8 +214,8 @@ npm run test:obsidian
 - **补写与打开**：点击卡片「… → 补写想法」或双击卡片，⌘/Ctrl + Enter 保存；Esc 收起并保留草稿。「… → 打开」进入完整原生文档，浏览器后续同步保留补写内容。
 - **失败恢复**：草稿和目标笔记本保存在工作空间的插件数据中。写入结果不确定时保留草稿，点击「重试记录」或「重试保存」核对，避免重复创建。首版面向单个活跃客户端，不支持多设备同时编辑同一份插件草稿。
 
-**升级**：先停用插件，将旧插件文件夹备份到 `data/plugins/` 之外，再复制新构建文件并启用，关闭旧卡片盒页签后重新打开。保留 `data/storage/petal/underline-notes/` 中的草稿与保存状态。卸载插件不会删除原生卡片和已保存想法。
+**升级**：先停用插件，将旧插件文件夹备份到 `data/plugins/` 之外，再复制新发布包中的文件并启用，关闭旧卡片盒页签后重新打开。保留 `data/storage/petal/underline-notes/` 中的草稿与保存状态。卸载插件不会删除原生卡片和已保存想法。
 
-需要 ZIP 时运行 `node scripts/package-release.mjs`，生成 `dist-release/underline-notes-siyuan.zip`。解压后同样放置整个 `underline-notes` 文件夹。
+开发者也可使用 Node.js 22.18+，运行 `npm ci`、`npm run build`，安装 `dist-siyuan/underline-notes/`。运行 `node scripts/package-release.mjs` 可生成 `dist-release/underline-notes-siyuan.zip`。
 
 思源版暂不提供按来源聚合、阅读足迹、AI 自动标签、移动端卡片盒或双向修改浏览器摘录；普通文档不会自动加入卡片盒。详见[插件说明](siyuan/README.md)、[安装指南](INSTALL.md)、[方案](docs/siyuan-plugin-plan.md)和[测试记录](docs/siyuan-testing.md)。
