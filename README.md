@@ -14,7 +14,7 @@
 | [思源插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-siyuan.zip) | 思源 3.8.10+ 卡片流、随手记、每日回顾；[安装说明](#思源插件安装与使用) |
 | [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip) | 在 Obsidian 1.6+ 中按卡片浏览已有摘录 |
 
-**让 Codex 帮你安装。** 按希望的保存位置，任选一句发给 Codex：
+**让Codex、WorkBuddy等Agent帮你安装。** 按希望的保存位置，任选一句发给 Agent：
 
 保存到本地文件夹（以后也可用 Obsidian 回顾）：
 
@@ -24,7 +24,11 @@
 
 > 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记，把摘录写入 flomo，并引导我在扩展设置中填写 flomo API URL。
 
-选择本地文件夹时，确认摘录已保存后，Codex 会问你是否要用 Obsidian 回顾。你可以选择安装 Obsidian 和配套插件、只给已有的 Obsidian 安装插件，或只用 Chrome。如果 Chrome 已装好，只需说「继续为刚才的笔记文件夹安装 Obsidian 插件，并打开卡片盒」。选择 flomo 时，在 flomo 中确认收到测试笔记即可完成安装；需要账号具备相应 API 权限，详见[写入 flomo](#写入-flomo)。
+写入思源笔记并使用卡片盒：
+
+> 请按 https://github.com/rockbotcc/underline-notes/blob/main/INSTALL.md 用发布包帮我安装 Chrome 划线笔记和思源卡片盒插件，把摘录写入思源笔记，并引导我在扩展设置中配置思源地址、API Token 和目标笔记本。
+
+选择本地文件夹时，确认摘录已保存后，Agent 会问你是否要用 Obsidian 回顾。你可以选择安装 Obsidian 和配套插件、只给已有的 Obsidian 安装插件，或只用 Chrome。如果 Chrome 已装好，只需说「继续为刚才的笔记文件夹安装 Obsidian 插件，并打开卡片盒」。选择 flomo 时，在 flomo 中确认收到测试笔记即可完成安装；需要账号具备相应 API 权限，详见[写入 flomo](#写入-flomo)。
 
 **手动安装**
 
