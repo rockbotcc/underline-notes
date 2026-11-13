@@ -12,7 +12,10 @@
     "test:browser-ai": "node tests/browser-ai.mjs",
     "test:flomo": "node tests/flomo.mjs",
     "test:images": "node tests/images.mjs",
-    "test:obsidian": "node tests/obsidian.mjs"
+    "test:obsidian": "node tests/obsidian.mjs",
+    "test:siyuan": "node tests/siyuan.mjs && node tests/siyuan-migration.mjs",
+    "test:siyuan-live": "node --experimental-strip-types tests/siyuan-live.mjs",
+    "test:siyuan-plugin-live": "node --experimental-strip-types tests/siyuan-plugin-live.mjs"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
@@ -22,9 +25,10 @@
   "devDependencies": {
     "@types/chrome": "^0.1.24",
     "@types/turndown": "^5.0.5",
-    "obsidian": "^1.8.7",
     "esbuild": "^0.25.0",
+    "obsidian": "^1.8.7",
     "playwright": "^1.58.0",
+    "siyuan": "^1.3.0",
     "typescript": "^5.9.0"
   }
 }

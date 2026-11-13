@@ -1,0 +1,47 @@
+/* Obsidian's cardbox stylesheet is included by build.mjs in a scoped block.
+   Keep only SiYuan host/native-renderer adapters here. */
+.un-cardbox.noting-view { height:100%; overflow:hidden; padding:0; --font-interface:var(--b3-font-family); --background-primary:var(--nt-paper); --background-modifier-border:var(--nt-line); }
+html[data-theme-mode="dark"] .un-cardbox.noting-view { --nt-green:#82bf9e; --nt-soft:#283e32; --nt-bg:#202520; --nt-paper:#282e29; --nt-ink:#dde4df; --nt-muted:#9ba89e; --nt-line:#384139; }
+.un-cardbox .nt-main { scrollbar-gutter:stable; }
+.un-cardbox .nt-header { margin-bottom:20px; }
+.un-cardbox .un-tools { display:flex; align-items:center; gap:12px; max-width:760px; margin:0 auto 20px; font-size:12px; }
+.un-cardbox .un-tools > span { margin-right:auto; }
+.un-cardbox .un-tools select { font:inherit; color:var(--nt-muted); background:var(--nt-paper); border:1px solid var(--nt-line); border-radius:7px; padding:7px 10px; min-width:0; max-width:180px; }
+.un-cardbox .un-tools select:focus-visible { outline:2px solid var(--nt-green); }
+.un-cardbox .un-hint { max-width:760px; margin:0 auto 16px; color:var(--nt-muted); font-size:12px; }
+.un-cardbox .un-hint:empty { display:none; }
+.un-cardbox .nt-memo { position:relative; }
+.un-cardbox .nt-memo-head { position:relative; }
+.un-cardbox .un-menu { position:absolute; z-index:5; right:0; top:100%; width:160px; padding:5px; background:var(--nt-paper); border:1px solid var(--nt-line); border-radius:9px; box-shadow:0 8px 25px #142b1820; }
+.un-cardbox .un-menu button { width:100%; text-align:left; font-size:13px; }
+.un-cardbox .un-compose { margin:0 0 20px; }
+.un-cardbox .nt-edit-actions button { font-size:12px; }
+.un-cardbox .un-native { min-height:0; color:var(--nt-ink); }
+.un-cardbox .un-native.protyle { height:auto!important; min-height:0; background:transparent!important; color:inherit; }
+.un-cardbox .un-native .protyle-content { overflow:visible!important; background:transparent!important; }
+.un-cardbox .un-native .protyle-wysiwyg { padding:0!important; min-height:0!important; font:16px/1.9 var(--font-interface)!important; color:inherit; }
+.un-cardbox .un-native .protyle-background, .un-cardbox .un-preview-hidden { display:none!important; }
+.un-cardbox .un-native .protyle-wysiwyg [data-node-id] { margin:0; scroll-margin:0; }
+.un-cardbox .un-native .protyle-wysiwyg > [data-type="NodeSuperBlock"] { display:block; padding:0; }
+.un-cardbox .un-native .protyle-wysiwyg > [data-type="NodeSuperBlock"] > [data-node-id]:not(.un-preview-hidden) { margin-bottom:12px; }
+.un-cardbox .un-native .protyle-wysiwyg [data-type="NodeHeading"] { font-size:18px; line-height:1.6; }
+.un-cardbox .un-native .protyle-wysiwyg [data-type="a"] { color:var(--nt-green); }
+.un-cardbox .un-native .protyle-wysiwyg [data-type="tag"] { color:var(--nt-green); background:var(--nt-soft); border-radius:9px; padding:2px 7px; cursor:pointer; }
+.un-cardbox .un-native .protyle-wysiwyg [data-type="NodeBlockquote"] { border:0; border-left:2px solid var(--nt-line); background:transparent; color:var(--nt-muted); font-size:14px; line-height:1.85; padding:0 0 0 14px; border-radius:0; }
+.un-cardbox .un-quote { margin-top:18px; }
+.un-cardbox .un-quote-primary { margin-top:0; }
+.un-cardbox .un-quote-primary .protyle-wysiwyg [data-type="NodeBlockquote"] { border:0; padding:0; color:var(--nt-ink); font-size:16px; line-height:1.9; }
+.un-cardbox .nt-source { text-decoration:none; }
+.un-cardbox .nt-source:hover { color:var(--nt-green); }
+.un-cardbox .un-native img { max-width:100%; height:auto; }
+.un-cardbox .un-native .protyle-wysiwyg [data-type="NodeCodeBlock"], .un-cardbox .un-native .protyle-wysiwyg [data-type="NodeTable"] { max-width:100%; overflow:auto; }
+@container (max-width:600px) { .un-cardbox .un-tools { gap:5px; flex-wrap:wrap; } .un-cardbox .un-tools select { max-width:150px; } }
+.un-cardbox .nt-icon svg { fill:none; stroke:currentColor; width:17px; height:17px; }
+.un-cardbox .nt-brand .nt-icon svg { width:21px; height:21px; }
+
+.un-cardbox .un-quote .protyle-wysiwyg [data-type="NodeBlockquote"]::before { display:none; }
+.un-cardbox .nt-icon[data-icon="more"] svg { stroke-width:3; }
+.un-cardbox .un-record-tools { display:flex; align-items:center; gap:10px; }
+.un-cardbox .un-record-tools select { font:inherit; font-size:12px; color:var(--nt-muted); background:var(--nt-paper); border:1px solid var(--nt-line); border-radius:7px; padding:7px 9px; max-width:190px; min-width:0; }
+.un-cardbox .un-record-tools select:focus-visible { outline:2px solid var(--nt-green); outline-offset:2px; }
+@container (max-width:600px) { .un-cardbox .nt-composer-tools { flex-wrap:wrap; } .un-cardbox .un-record-tools { flex-wrap:wrap; } .un-cardbox .un-record-tools select { max-width:150px; } }

@@ -1,8 +1,11 @@
 import { openDB, type DBSchema, type IDBPTransaction } from 'idb';
 import { DEFAULT_SETTINGS, type Article, type Session, type Pending, type Settings } from '../../shared/model';
 import type { FlomoJob } from './flomo-api';
+import type { SiyuanJob, SiyuanBinding } from './siyuan-output';
 
 interface NotingDB extends DBSchema {
+  siyuanJobs: { key: string; value: SiyuanJob };
+  siyuanBindings: { key: string; value: SiyuanBinding };
   flomo: { key: string; value: FlomoJob };
   articles: { key: string; value: Article };
   sessions: { key: string; value: Session; indexes: { articleId: string; day: string } };
@@ -11,9 +14,13 @@ interface NotingDB extends DBSchema {
   meta: { key: string; value: unknown };
 }
 
-export const database = openDB<NotingDB>('noting', 2, {
+export const database = openDB<NotingDB>('noting', 3, {
   upgrade(db, oldVersion) {
-    db.createObjectStore('flomo', { keyPath: 'key' });
+    if (oldVersion < 3) {
+      db.createObjectStore('siyuanJobs', { keyPath: 'key' });
+      db.createObjectStore('siyuanBindings', { keyPath: 'key' });
+    }
+    if (oldVersion < 2) db.createObjectStore('flomo', { keyPath: 'key' });
     if (oldVersion >= 1) return;
     db.createObjectStore('articles', { keyPath: 'id' });
     const sessions = db.createObjectStore('sessions', { keyPath: 'id' });
@@ -25,7 +32,7 @@ export const database = openDB<NotingDB>('noting', 2, {
   },
 });
 
-export type WriteTransaction = IDBPTransaction<NotingDB, ('articles' | 'sessions' | 'pending' | 'flomo')[], 'readwrite'>;
+export type WriteTransaction = IDBPTransaction<NotingDB, ('articles' | 'sessions' | 'pending' | 'flomo' | 'siyuanJobs')[], 'readwrite'>;
 
 export async function dirty(tx: WriteTransaction, key: string) {
   await tx.objectStore('pending').put({ key, version: crypto.randomUUID() });

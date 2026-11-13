@@ -1,0 +1,250 @@
+// Official kernel + real SiYuan web frontend, exclusively in a disposable workspace.
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
+import { mkdtemp, mkdir, readFile, writeFile, rm, open, cp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { newSiyuanId } from '../browser/src/siyuan-api.ts';
+import { versionMarkdown, contentHash } from '../browser/src/siyuan-content.ts';
+import { readCards } from '../siyuan/cards.ts';
+
+const executable = process.env.SIYUAN_TEST_KERNEL;
+assert.ok(executable, 'Set SIYUAN_TEST_KERNEL to official kernel executable');
+const root = await mkdtemp(path.join(tmpdir(), 'noting-plugin-live-'));
+const workspace = path.join(root, 'workspace'), home = path.join(root, 'home');
+await mkdir(workspace); await mkdir(home); await mkdir('test-results', { recursive: true });
+const reservation = createServer(); await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
+const port = reservation.address().port; await new Promise(resolve => reservation.close(resolve));
+const base = `http://127.0.0.1:${port}`, password = randomUUID();
+const log = await open(path.join(root, 'kernel.log'), 'a');
+const kernel = spawn(executable, ['serve', '--home-dir', home, '--workspace', workspace, '--wd', path.dirname(path.dirname(executable)), '--port', String(port), '--fixed-port=false', '--accessAuthCode', password, '--lang', 'zh-CN'], { stdio: ['ignore', log.fd, log.fd] });
+let token, browser, page, completed = false;
+const errors = [];
+async function api(endpoint, body = {}) {
+  const response = await fetch(base + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Token ' + token }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+  assert.equal(response.status, 200, endpoint); const result = await response.json(); assert.equal(result.code, 0, endpoint + ': ' + result.msg); return result.data;
+}
+try {
+  let ready = false;
+  for (let i = 0; i < 100; i++) {
+    if (kernel.exitCode !== null) throw new Error('kernel exited; log: ' + root);
+    try { token = JSON.parse(await readFile(path.join(workspace, 'conf/conf.json'), 'utf8')).api.token; await api('/api/system/version'); ready = true; break; } catch {}
+    await delay(300);
+  }
+  assert.ok(ready);
+  await cp('dist-siyuan/underline-notes', path.join(workspace, 'data/plugins/underline-notes'), { recursive: true });
+  await api('/api/setting/setBazaar', { trust: true }); // Only this disposable test workspace.
+  const enabled = await api('/api/petal/setPetalEnabled', { packageName: 'underline-notes', enabled: true });
+  assert.equal(enabled.enabled, true);
+  console.log('Enabled plugin:', { name: enabled.name, incompatible: enabled.incompatible });
+  const petals = await api('/api/petal/loadPetals', { frontend: 'browser-desktop' });
+  console.log('Loaded petals:', petals?.map(p => ({ name: p.name, enabled: p.enabled, incompatible: p.incompatible, jsLength: p.js.length })));
+  const notebook = (await api('/api/notebook/createNotebook', { name: '卡片盒隔离测试' })).notebook.id;
+  const other = (await api('/api/notebook/createNotebook', { name: '另一本笔记' })).notebook.id;
+  await api('/api/notebook/getNotebookConf', { notebook });
+  await api('/api/notebook/getNotebookConf', { notebook: other });
+  await delay(1000);
+  async function create(title, text, box = notebook) {
+    const id = newSiyuanId(), block = newSiyuanId();
+    await api('/api/filetree/createDocByParent', { notebook: box, parentID: null, id, title: { format: 'plain', text: title }, markdown: versionMarkdown(text, block, await contentHash(text), new Date().toISOString()) });
+    return id;
+  }
+  const first = await create('阅读是一种主动思考', '从信息到理解，需要留下自己的判断。 #阅读/方法\n\n> 真正有用的知识，来自主动联系。\n\n来源：[阅读随记](<https://example.com/read>)\n\n摘录时间：2026-11-13T10:00:00Z');
+  const second = await create('知识的连接', '把新的想法与旧经验联系起来。 #阅读/技术\n\n> 连接，让笔记更有价值。');
+  await create('生活中的观察', '记录每天的小发现。 #生活', other);
+  await api('/api/sqlite/flushTransaction');
+  const cards = await readCards(api); assert.equal(cards.length, 3); assert.ok(cards[0].markdown.length > 30, 'SQL includes superblock markdown');
+  browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 1360, height: 1000 } });
+  await context.route('**/*', async route => {
+    if (route.request().url().startsWith(base + '/')) await route.continue({ headers: { ...route.request().headers(), authorization: 'Token ' + token } });
+    else await route.abort();
+  });
+  page = await context.newPage(); page.on('pageerror', error => errors.push(error.message)); page.on('console', msg => { if (msg.type() === 'error') console.log('BROWSER ERROR:', msg.text().slice(0, 600)); });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(base); await page.waitForTimeout(2500);
+  console.log('Page title:', await page.title());
+  await page.screenshot({ path: 'test-results/siyuan-plugin-start.png' });
+  console.log((await page.locator('body').innerText()).slice(0, 2500));
+  const toolbar = page.locator('[aria-label="划线笔记 · 卡片盒"]');
+  await toolbar.waitFor({ timeout: 20000 }); await toolbar.click();
+  await page.locator('.un-card').first().waitFor();
+  assert.equal(await page.locator('.un-card').count(), 3);
+  await page.locator('.un-card .protyle-wysiwyg').first().waitFor();
+  await page.screenshot({ path: 'test-results/siyuan-plugin-cardbox.png', fullPage: true });
+  console.log('CARD BOX LOADED', errors);
+  // Further assertions below are kept on the real frontend, without SDK stubs.
+  const card = id => page.locator(`.un-card[data-card-id="${id}"]`);
+  const edit = async id => {
+    await card(id).getByRole('button', { name: '更多操作', exact: true }).click();
+    await card(id).getByRole('menuitem', { name: '补写想法', exact: true }).click();
+  };
+  assert.equal(await page.locator('.un-cardbox').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(247, 248, 246)', 'Same light background as Obsidian');
+  assert.equal(await page.locator('.un-cardbox').getByRole('button', { name: '补写想法', exact: true }).count(), 0, 'Editing action stays in the more menu');
+  assert.equal(await card(first).locator('h2').count(), 0, 'No duplicate document title above the excerpt');
+  await page.waitForFunction(() => [...document.querySelectorAll('.un-quote')].some(el => !el.hidden && el.innerText.includes('主动联系')));
+  assert.ok(!(await card(first).innerText()).includes('更新 2026-'), 'Version heading is hidden');
+  assert.ok(!(await card(first).innerText()).includes('摘录时间：'), 'Machine timestamp is hidden');
+  assert.equal(await card(first).getByRole('link', { name: '查看来源：阅读随记' }).count(), 1);
+  const more = card(first).getByRole('button', { name: '更多操作', exact: true });
+  await more.focus(); await page.keyboard.press('Enter');
+  assert.equal(await more.getAttribute('aria-expanded'), 'true');
+  await page.keyboard.press('ArrowDown');
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), '打开');
+  await page.keyboard.press('Escape');
+  assert.equal(await more.getAttribute('aria-expanded'), 'false');
+  assert.equal(await more.evaluate(el => el === document.activeElement), true);
+  await page.getByRole('navigation', { name: '标签筛选' }).getByRole('button', { name: '收起 阅读', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: '阅读/方法', exact: true }).count(), 0);
+  await page.getByRole('button', { name: '展开 阅读', exact: true }).click();
+  await page.getByRole('button', { name: '阅读/方法', exact: true }).waitFor();
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('主动 判断');
+  await page.waitForFunction(() => document.querySelectorAll('.un-card').length === 1);
+  assert.ok(await card(first).isVisible());
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('');
+  await page.getByRole('navigation', { name: '标签筛选' }).getByRole('button', { name: '阅读', exact: true }).click();
+  assert.equal(await page.locator('.un-card').count(), 2);
+  await page.getByRole('button', { name: '全部笔记', exact: true }).click();
+  await page.getByRole('combobox', { name: '筛选笔记本' }).selectOption(other); assert.equal(await page.locator('.un-card').count(), 1);
+  await page.getByRole('combobox', { name: '筛选笔记本' }).selectOption('');
+  await edit(first);
+  await card(first).getByRole('textbox', { name: '补写想法', exact: true }).fill('用自己的问题来组织阅读。 #实践/阅读');
+  await card(first).getByText('草稿已保存在本机', { exact: true }).waitFor();
+  await card(first).getByRole('textbox', { name: '补写想法', exact: true }).press('Escape');
+  assert.equal(await card(first).getByRole('textbox', { name: '补写想法', exact: true }).count(), 0);
+  await card(first).locator('time').dblclick();
+  assert.equal(await card(first).getByRole('textbox', { name: '补写想法', exact: true }).inputValue(), '用自己的问题来组织阅读。 #实践/阅读');
+  await page.reload(); await toolbar.waitFor();
+  if (!await page.locator('.un-card').count()) await toolbar.click();
+  await card(first).waitFor(); assert.equal(await card(first).getByRole('textbox', { name: '补写想法', exact: true }).inputValue(), '用自己的问题来组织阅读。 #实践/阅读');
+  await card(first).getByRole('textbox', { name: '补写想法', exact: true }).press('Control+Enter');
+  await card(first).locator('.un-thoughts').waitFor();
+  const markdown = async id => (await api('/api/block/getBlockKramdown', { id })).kramdown;
+  assert.ok((await markdown(first)).includes('用自己的问题'));
+  assert.equal((await markdown(first)).match(/custom-underline-thought=/g).length, 1);
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('自己的问题'); assert.equal(await page.locator('.un-card').count(), 1);
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('');
+  const revised = '浏览器更新后的新摘录。 #新版';
+  await api('/api/block/appendBlock', { parentID: first, dataType: 'markdown', data: versionMarkdown(revised, newSiyuanId(), await contentHash(revised), new Date().toISOString()) });
+  await page.locator('.un-tools').getByRole('button', { name: '刷新', exact: true }).click();
+  await card(first).getByRole('button', { name: '#新版', exact: true }).waitFor();
+  await card(first).locator('.un-thoughts').waitFor();
+  await card(first).locator('.un-thoughts').getByText('用自己的问题来组织阅读。 #实践/阅读', { exact: true }).waitFor();
+  assert.ok((await markdown(first)).includes('主动联系'));
+  // Lose a successful append response in the browser; reconciliation must avoid duplicates.
+  let lost = false;
+  await page.route('**/api/block/appendBlock', async route => {
+    const response = await route.fetch({ headers: { ...route.request().headers(), authorization: 'Token ' + token } });
+    if (!lost) { lost = true; await route.abort('failed'); } else await route.fulfill({ response });
+  });
+  await edit(second);
+  await card(second).getByRole('textbox', { name: '补写想法', exact: true }).fill('响应丢失也只保存一次');
+  await card(second).getByRole('button', { name: '保存想法', exact: true }).click();
+  await card(second).locator('.un-thoughts').waitFor();
+  assert.equal((await markdown(second)).match(/custom-underline-thought=/g).length, 1);
+  await page.unroute('**/api/block/appendBlock');
+  // Read-only native previews; opening a document delegates to SiYuan's actual editor.
+  assert.equal(await card(first).locator('[contenteditable="true"]').count(), 0);
+  await page.screenshot({ path: 'test-results/siyuan-plugin-cardbox.png', fullPage: true });
+  // Verify the same palette and usable flow in narrow panes and native dark mode.
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme-mode', 'dark'));
+  assert.equal(await page.locator('.un-cardbox').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(32, 37, 32)');
+  assert.equal(await page.locator('.nt-navigation button').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(40, 62, 50)');
+  assert.equal(await page.locator('.un-native .protyle-content').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
+  assert.equal(await page.locator('.un-native').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)', 'Native preview has no light background in dark mode');
+  await page.screenshot({ path: 'test-results/siyuan-plugin-dark.png', fullPage: true });
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme-mode', 'light'));
+  await page.setViewportSize({ width: 780, height: 950 });
+  assert.equal(await page.locator('.nt-main').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'No horizontal overflow in narrow pane');
+  await page.screenshot({ path: 'test-results/siyuan-plugin-narrow.png', fullPage: true });
+  await page.setViewportSize({ width: 1360, height: 1000 });
+  await card(first).getByRole('button', { name: '更多操作', exact: true }).click();
+  await card(first).getByRole('menuitem', { name: '打开', exact: true }).click();
+  await page.waitForFunction(id => [...document.querySelectorAll('.layout-tab-bar .item')].some(el => el.textContent.includes('阅读是一种主动思考')), first);
+  await toolbar.click(); await page.locator('.un-cardbox').waitFor();
+  const composer = page.locator('.nt-composer');
+  await composer.getByRole('textbox', { name: '记录新想法' }).fill('随手记录的第一条想法 #随手记/测试');
+  await composer.getByRole('button', { name: '记录', exact: true }).click();
+  await composer.getByText('请选择保存到哪个笔记本。', { exact: true }).waitFor();
+  await composer.getByRole('combobox', { name: '保存到笔记本' }).selectOption(notebook);
+  await composer.getByText('草稿已保存在本机', { exact: true }).waitFor();
+  await page.reload(); await toolbar.waitFor();
+  if (!await page.locator('.un-cardbox').count()) await toolbar.click();
+  await composer.waitFor();
+  await page.waitForFunction(() => document.querySelector('.nt-composer textarea').value === '随手记录的第一条想法 #随手记/测试');
+  assert.equal(await composer.getByRole('textbox', { name: '记录新想法' }).inputValue(), '随手记录的第一条想法 #随手记/测试');
+  assert.equal(await composer.getByRole('combobox', { name: '保存到笔记本' }).inputValue(), notebook);
+  let createLost = false;
+  await page.route('**/api/filetree/createDocByParent', async route => {
+    const response = await route.fetch({ headers: { ...route.request().headers(), authorization: 'Token ' + token } });
+    if (!createLost) { createLost = true; await route.abort('failed'); } else await route.fulfill({ response });
+  });
+  await composer.getByRole('textbox', { name: '记录新想法' }).press('Control+Enter');
+  await composer.getByText('想法已保存', { exact: true }).waitFor();
+  await page.waitForFunction(() => !document.querySelector('.nt-composer .nt-primary').disabled);
+  await page.unroute('**/api/filetree/createDocByParent');
+  let localCards = (await readCards(api)).filter(card => card.kind === 'local');
+  assert.equal(localCards.length, 1); const quickId = localCards[0].id;
+  assert.ok((await markdown(quickId)).includes('随手记录的第一条想法'));
+  assert.equal(await composer.getByRole('textbox', { name: '记录新想法' }).inputValue(), '');
+  await card(quickId).waitFor();
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('随手记录'); assert.equal(await page.locator('.un-card').count(), 1);
+  await page.getByRole('button', { name: '每日回顾', exact: true }).click();
+  await page.getByRole('heading', { name: '与过去的想法重逢' }).waitFor();
+  assert.equal(await composer.isVisible(), false); assert.equal(await page.locator('.un-card').count(), 1);
+  assert.equal(await page.getByRole('button', { name: '上一张', exact: true }).isDisabled(), true);
+  assert.ok(await card(quickId).isVisible());
+  await edit(quickId);
+  await card(quickId).getByRole('textbox', { name: '补写想法' }).fill('回顾时补写的理解');
+  await card(quickId).getByRole('textbox', { name: '补写想法' }).press('Control+Enter');
+  await card(quickId).locator('.un-thoughts').waitFor();
+  assert.ok((await markdown(quickId)).includes('回顾时补写的理解'));
+  await page.getByRole('button', { name: '完成回顾', exact: true }).click();
+  await page.getByRole('heading', { name: '今天的回顾完成了' }).waitFor();
+  await page.getByRole('button', { name: '回到卡片', exact: true }).click(); await composer.waitFor();
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('');
+  await composer.getByRole('textbox', { name: '记录新想法' }).fill('第二条随手记 #实践');
+  await composer.getByRole('button', { name: '记录', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('.nt-composer textarea').value === '' && !document.querySelector('.nt-composer .nt-primary').disabled);
+  localCards = (await readCards(api)).filter(card => card.kind === 'local'); assert.equal(localCards.length, 2);
+  for (let i = 0; i < 9; i++) await create('回顾候选 ' + i, '回顾候选 ' + i + ' #回顾/测试');
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('回顾候选');
+  await page.locator('.un-tools').getByRole('button', { name: '刷新', exact: true }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.un-card').length === 9);
+  await page.getByRole('button', { name: '每日回顾', exact: true }).click();
+  await page.locator('.nt-review-progress').getByText('01 / 08', { exact: true }).waitFor();
+  const sequence = [];
+  for (let i = 0; i < 8; i++) {
+    assert.equal(await page.locator('.un-card').count(), 1);
+    sequence.push(await page.locator('.un-card').getAttribute('data-card-id'));
+    if (i < 7) await page.getByRole('button', { name: '下一张', exact: true }).click();
+  }
+  assert.equal(new Set(sequence).size, 8);
+  await page.getByRole('button', { name: '上一张', exact: true }).click();
+  assert.equal(await page.locator('.un-card').getAttribute('data-card-id'), sequence[6]);
+  await page.getByRole('button', { name: '每日回顾', exact: true }).click();
+  assert.equal(await page.locator('.un-card').getAttribute('data-card-id'), sequence[0]);
+  await page.locator('.un-card .protyle-wysiwyg').filter({ hasText: '回顾候选' }).first().waitFor();
+  await page.screenshot({ path: 'test-results/siyuan-plugin-review.png', fullPage: true });
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('不存在的回顾内容');
+  assert.equal(await page.locator('.un-card').count(), 0);
+  await page.getByRole('button', { name: '清除筛选', exact: true }).click();
+  await page.getByRole('button', { name: '全部笔记', exact: true }).click();
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('随手');
+  await page.locator('.un-card .protyle-wysiwyg').first().waitFor();
+  await page.screenshot({ path: 'test-results/siyuan-plugin-quick-note.png', fullPage: true });
+  const relevant = errors.filter(text => /underline|un-card|protyle.*(undefined|null)/i.test(text));
+  assert.deepEqual(relevant, []);
+  await writeFile('test-results/siyuan-plugin-result.json', JSON.stringify({ version: await api('/api/system/version'), passed: true, checks: ['real-plugin-load', 'native-render', 'search', 'parent-tag', 'notebook-filter', 'draft-restart', 'native-thought', 'browser-update-preserves-thought', 'lost-response-dedup', 'readonly-preview', 'open-native-document', 'obsidian-shared-style', 'menu-keyboard', 'double-click-editor', 'escape-retains-draft', 'shortcut-save', 'collapsible-tags', 'metadata-hidden', 'dark-theme', 'narrow-pane', 'quick-note-destination', 'quick-note-draft-restart', 'quick-note-native-document', 'quick-note-lost-response', 'quick-note-shortcut', 'review-filter-scope', 'review-eight-stable-cards', 'review-navigation', 'review-append-thought', 'review-completion', 'review-empty'], pageErrors: errors }, null, 2));
+  console.log('PASS 思源插件真实前端测试'); completed = true;
+} finally {
+  if (!completed && page) { await page.screenshot({ path: 'test-results/siyuan-plugin-failure.png' }).catch(() => {}); console.error('Page errors:', errors); }
+  await browser?.close();
+  const stopped = new Promise(resolve => kernel.once('exit', resolve)); kernel.kill('SIGTERM');
+  await Promise.race([stopped, delay(8000).then(() => { if (kernel.exitCode === null) kernel.kill('SIGKILL'); })]);
+  await log.close(); if (completed) await rm(root, { recursive: true, force: true }); else console.error('Isolated artifacts:', root);
+}

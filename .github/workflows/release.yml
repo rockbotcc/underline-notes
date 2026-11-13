@@ -27,6 +27,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:flomo
+      - run: npm run test:siyuan
       - run: node scripts/package-release.mjs
       - name: Publish release
         env:

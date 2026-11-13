@@ -1,5 +1,7 @@
 import { database, dirty, getDirectory, getSettings, saveArticle, type WriteTransaction } from './db';
 import { flushOutput } from './output';
+import { checkedSiyuanUrl, siyuanProfile, SIYUAN_ID, SiyuanClient } from './siyuan-api';
+import { queueSiyuan, pendingSiyuan, recreateMissing } from './siyuan-output';
 import { checkedFlomoUrl, flomoContent } from './flomo-api';
 import { validateBackup } from './backup';
 import { autoTagNote, DEFAULT_TAG_AI, tagEndpoint, readVaultTags } from './ai-tags';
@@ -56,12 +58,18 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
     const page = await pageInfo(message.page, sender);
     if (settings.outputTarget === 'obsidian') await flushOutput();
     const article = await db.get('articles', await articleId(page.url));
-    return { article: article?.deletedAt ? null : article ?? null, settings: { ...settings, flomoApiUrl: '', ai: undefined }, excluded: isExcluded(page.url, settings.excludedDomains) };
+    return { article: article?.deletedAt ? null : article ?? null, settings: { outputTarget: settings.outputTarget, flomoApiUrl: '', recordHistory: settings.recordHistory, excludedDomains: settings.excludedDomains, vaultName: settings.vaultName, vaultFolder: settings.vaultFolder }, excluded: isExcluded(page.url, settings.excludedDomains) };
   }
   if (message.type === 'PAGE_OUTPUT_STATUS') {
     const page = await pageInfo(message.page, sender);
     const id = await articleId(page.url);
     const directory = await getDirectory();
+    if (settings.outputTarget === 'siyuan') {
+      const jobs = (await db.getAll('siyuanJobs')).filter(job => job.articleId === id && job.profileId === settings.siyuan?.profileId && !job.cancelled);
+      const bindings = (await db.getAll('siyuanBindings')).filter(item => item.profileId === settings.siyuan?.profileId && item.key.startsWith(item.profileId + ':' + id + ':') && item.confirmed);
+      return { target: 'siyuan', connected: Boolean(settings.siyuan?.notebookId), pending: jobs.some(pendingSiyuan), sent: bindings.length > 0,
+        docId: bindings[0]?.docId, error: jobs.find(job => pendingSiyuan(job) && job.error)?.error || '' };
+    }
     if (settings.outputTarget === 'flomo') {
       const jobs = (await db.getAll('flomo')).filter(job => job.articleId === id);
       return { target: 'flomo', connected: Boolean(settings.flomoApiUrl), pending: jobs.some(job => job.content !== job.sentContent), sent: jobs.some(job => job.sentContent), error: jobs.find(job => job.error)?.error || '' };
@@ -111,7 +119,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       }
     }
     if (taggedNote !== undefined && JSON.stringify((await getSettings()).ai) !== JSON.stringify(settings.ai)) taggedNote = undefined;
-    const tx = db.transaction(['articles', 'sessions', 'pending', 'flomo'], 'readwrite');
+    const tx = db.transaction(['articles', 'sessions', 'pending', 'flomo', 'siyuanJobs'], 'readwrite');
     const previous = await tx.objectStore('articles').get(id);
     if (message.type === 'READING' && previous?.deletedAt) { await tx.done; return null; }
     const article = await ensureArticle(tx, page, id);
@@ -165,6 +173,7 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       const content = flomoContent(article, annotation);
       await flomo.put({ key, articleId: id, content, version: crypto.randomUUID(), sentContent: previousJob?.sentContent });
     }
+    await queueSiyuan(tx, settings.outputTarget === 'siyuan' ? settings.siyuan : undefined, article, annotation, note !== undefined);
     await saveArticle(tx, article);
     await tx.done;
     void flushOutput().catch(console.error);
@@ -174,18 +183,35 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
 
   requireExtensionPage(sender);
   switch (message.type) {
+    case 'SIYUAN_TEST': {
+      const baseUrl = checkedSiyuanUrl(text(message.baseUrl, 2000));
+      const apiToken = text(message.apiToken, 4000).trim();
+      if (!apiToken || /[\r\n]/.test(apiToken)) throw new Error('请填写有效的思源 API Token。');
+      const client = new SiyuanClient({ baseUrl, apiToken });
+      const version = await client.call<string>('system/version');
+      if (typeof version !== 'string') throw new Error('无法读取思源版本。');
+      return { version, notebooks: (await client.notebooks()).filter(item => !item.closed) };
+    }
+    case 'SIYUAN_RECREATE': {
+      if (settings.outputTarget !== 'siyuan' || !settings.siyuan) throw new Error('请先配置思源。');
+      await navigator.locks.request('noting-output', () => recreateMissing(settings.siyuan!));
+      await flushOutput(true);
+      return null;
+    }
     case 'STATUS': {
       const articles = (await db.getAll('articles')).filter(article => !article.deletedAt);
       const directory = await getDirectory();
       const flomoPending = (await db.getAll('flomo')).filter(job => job.content !== job.sentContent);
       const isFlomo = settings.outputTarget === 'flomo';
+      const isSiyuan = settings.outputTarget === 'siyuan';
+      const siyuanPending = (await db.getAll('siyuanJobs')).filter(job => job.profileId === settings.siyuan?.profileId && pendingSiyuan(job));
       return {
         settings, aiTagError: await db.get('meta', 'aiTagError'), directoryName: directory?.name ?? '',
         articles: articles.length,
         annotations: articles.reduce((total, article) => total + article.annotations.length, 0),
-        pending: isFlomo ? flomoPending : await db.getAll('pending'),
-        lastSync: await db.get('meta', isFlomo ? 'flomoLastSync' : 'lastSync'),
-        syncError: isFlomo ? flomoPending.find(job => job.error)?.error : await db.get('meta', 'syncError'),
+        pending: isSiyuan ? siyuanPending : isFlomo ? flomoPending : await db.getAll('pending'),
+        lastSync: await db.get('meta', isSiyuan ? 'siyuanLastSync:' + settings.siyuan?.profileId : isFlomo ? 'flomoLastSync' : 'lastSync'),
+        syncError: isSiyuan ? siyuanPending.find(job => job.error)?.error : isFlomo ? flomoPending.find(job => job.error)?.error : await db.get('meta', 'syncError'),
       };
     }
     case 'SAVE_SETTINGS': {
@@ -198,10 +224,21 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       const folder = text(value.vaultFolder, 500).trim().replace(/^\/+|\/+$/g, '');
       if (folder.split('/').some(part => part === '..' || part === '.')) throw new Error('文件夹路径无效');
       const outputTarget = value.outputTarget ?? 'obsidian';
-      if (!['obsidian', 'flomo'].includes(outputTarget)) throw new Error('写入位置无效');
+      if (!['obsidian', 'flomo', 'siyuan'].includes(outputTarget)) throw new Error('写入位置无效');
       const rawUrl = text(value.flomoApiUrl ?? '', 2000).trim();
       const flomoApiUrl = rawUrl || outputTarget === 'flomo' ? checkedFlomoUrl(rawUrl) : '';
       const next: Settings = { outputTarget, flomoApiUrl, recordHistory: value.recordHistory, excludedDomains: [...new Set(domains)], vaultName: text(value.vaultName, 200).trim(), vaultFolder: folder };
+      if (value.siyuan) {
+        const baseUrl = checkedSiyuanUrl(text(value.siyuan.baseUrl, 2000));
+        const apiToken = text(value.siyuan.apiToken, 4000).trim();
+        const notebookId = text(value.siyuan.notebookId, 100);
+        if (!apiToken || /[\r\n]/.test(apiToken) || !SIYUAN_ID.test(notebookId)) throw new Error('请填写思源 Token，并测试连接后选择笔记本。');
+        next.siyuan = { baseUrl, apiToken, notebookId, profileId: await siyuanProfile(baseUrl, notebookId) };
+        const sameConnection = settings.siyuan?.profileId === next.siyuan.profileId && settings.siyuan.apiToken === apiToken;
+        if (outputTarget === 'siyuan' && !sameConnection) next.siyuan.notebookName = await new SiyuanClient(next.siyuan).checkNotebook(notebookId);
+        else if (sameConnection) next.siyuan.notebookName = settings.siyuan?.notebookName;
+      }
+      if (outputTarget === 'siyuan' && !next.siyuan) throw new Error('请先配置思源并选择笔记本。');
       const ai = value.ai ?? DEFAULT_TAG_AI;
       if (typeof ai.enabled !== 'boolean') throw new Error('自动标签设置无效');
       next.ai = { enabled: ai.enabled, baseUrl: text(ai.baseUrl, 2000).trim(), apiKey: text(ai.apiKey, 4000).trim(), model: text(ai.model, 200).trim() };

@@ -5,3 +5,5 @@ dist-release/
 test-results/
 *.zip
 .DS_Store
+
+dist-siyuan/

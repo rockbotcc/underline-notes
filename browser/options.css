@@ -60,7 +60,7 @@ code { font-family: ui-monospace, monospace; font-size: 11px; color: #788268; }
 .toggle-row input:focus-visible + .switch { outline: 2px solid #70865f; outline-offset: 3px; }
 .field { display: block; font-size: 12px; color: #5b6452; margin: 20px 0 10px; }
 .field span { display: block; font-size: 11px; color: #969c8b; margin-top: 7px; line-height: 1.6; }
-textarea, input[type="text"], input[type="password"], select { width: 100%; padding: 10px 12px; border: 1px solid #dfe4d5; border-radius: 6px; background: #fdfefa; color: #4d5b42; font-size: 12px; line-height: 1.7; }
+textarea, input[type="text"], input[type="url"], input[type="password"], select { width: 100%; padding: 10px 12px; border: 1px solid #dfe4d5; border-radius: 6px; background: #fdfefa; color: #4d5b42; font-size: 12px; line-height: 1.7; }
 textarea { resize: vertical; min-height: 70px; }
 textarea::placeholder, input::placeholder { color: #b0b6a7; }
 .field-row { display: flex; align-items: flex-end; gap: 26px; }

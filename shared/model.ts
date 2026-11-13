@@ -63,9 +63,18 @@ export interface Session {
   progress: number;
 }
 
+export interface SiyuanSettings {
+  baseUrl: string;
+  apiToken: string;
+  notebookId: string;
+  notebookName?: string;
+  profileId: string;
+}
+
 export interface Settings {
   ai?: { enabled: boolean; baseUrl: string; apiKey: string; model: string };
-  outputTarget: 'obsidian' | 'flomo';
+  outputTarget: 'obsidian' | 'flomo' | 'siyuan';
+  siyuan?: SiyuanSettings;
   flomoApiUrl: string;
   recordHistory: boolean;
   excludedDomains: string[];

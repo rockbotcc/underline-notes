@@ -45,3 +45,13 @@ await copyFile('manifest.json', 'dist-obsidian/noting/manifest.json');
 await copyFile('obsidian/styles.css', 'dist-obsidian/noting/styles.css');
 for (const file of ['LICENSE', 'NOTICE']) await copyFile(file, `dist-obsidian/noting/${file}`);
 console.log('Obsidian 插件已生成至 dist-obsidian/noting/');
+
+await mkdir('dist-siyuan/underline-notes', { recursive: true });
+await build({ entryPoints: ['siyuan/main.ts'], bundle: true, outfile: 'dist-siyuan/underline-notes/index.js', format: 'cjs', platform: 'browser', external: ['siyuan'], target: 'es2022', banner });
+// Both hosts use the same cardbox design; scope the shared styles to this plugin.
+await writeFile('dist-siyuan/underline-notes/index.css', '@scope (.un-cardbox) {\n' + (await readFile('obsidian/styles.css', 'utf8')).replaceAll('.noting-view', ':scope') + '\n}\n' + await readFile('siyuan/styles.css', 'utf8'));
+for (const file of ['plugin.json', 'README.md']) await copyFile(`siyuan/${file}`, `dist-siyuan/underline-notes/${file}`);
+await cp('siyuan/i18n', 'dist-siyuan/underline-notes/i18n', { recursive: true });
+await copyFile('browser/icons/128.png', 'dist-siyuan/underline-notes/icon.png');
+for (const file of ['LICENSE', 'NOTICE']) await copyFile(file, `dist-siyuan/underline-notes/${file}`);
+console.log('思源插件已生成至 dist-siyuan/underline-notes/');

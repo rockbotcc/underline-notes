@@ -1,6 +1,7 @@
 import { database, getSettings } from './db';
 import { flushFiles } from './files';
 import { flomoContent, postFlomo } from './flomo-api';
+import { flushSiyuan } from './siyuan-output';
 
 let inFlight: Promise<void> | undefined;
 export async function flushOutput(force = false): Promise<void> {
@@ -15,6 +16,7 @@ async function run(force: boolean) {
   await navigator.locks.request('noting-output', async () => {
     const settings = await getSettings();
     if (settings.outputTarget === 'obsidian') { await flushFiles(); return; }
+    if (settings.outputTarget === 'siyuan') { if (settings.siyuan) await flushSiyuan(settings.siyuan, force); return; }
     const db = await database;
     // Bound each batch so large queues do not monopolize the service worker.
     const jobs = (await db.getAll('flomo')).filter(job => job.content !== job.sentContent && (force || !job.retryAfter || job.retryAfter <= Date.now())).slice(0, 10);

@@ -89,7 +89,7 @@ let savingSelection = false;
 let imageTarget: HTMLImageElement | null = null;
 let renderTimer: ReturnType<typeof setTimeout>;
 let toastTimer: ReturnType<typeof setTimeout>;
-let outputStatus: { target?: 'flomo'; sent?: boolean; connected: boolean; vaultName?: string; pending: boolean; error: string } | undefined;
+let outputStatus: { target?: 'flomo' | 'siyuan'; docId?: string; sent?: boolean; connected: boolean; vaultName?: string; pending: boolean; error: string } | undefined;
 
 async function refreshOutputStatus(announce = false) {
   const url = currentUrl;
@@ -101,6 +101,12 @@ async function refreshOutputStatus(announce = false) {
 }
 
 function outputMessage() {
+  if (outputStatus?.target === 'siyuan') {
+    if (outputStatus.error) return '思源写入需要处理：' + outputStatus.error;
+    if (!outputStatus.connected) return '已保存在浏览器；请配置思源笔记';
+    if (outputStatus.pending) return '已保存在浏览器，等待写入思源';
+    return outputStatus.sent ? '已写入思源' : '已保存在浏览器；新增或修改笔记后写入思源';
+  }
   if (outputStatus?.target === 'flomo') {
     if (outputStatus.error) return 'flomo 写入需要处理：' + outputStatus.error;
     if (!outputStatus.connected) return '已保存在浏览器；请配置 flomo API URL';
@@ -330,7 +336,7 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
   if (article?.annotations.some(item => item.id === annotation.id)) {
     actions.append(button(annotation.image ? '删除图片笔记' : '删除笔记', async () => {
       const target = annotation.image ? '这条图片笔记' : '这条笔记及对应的划线';
-      if (!window.confirm('确定删除' + target + (settings.outputTarget === 'flomo' ? '吗？flomo 中已写入的记录需自行删除。' : '吗？同步时也会删除 Obsidian 中对应的卡片，包括卡片里补写的内容。'))) return;
+      if (!window.confirm('确定删除' + target + (settings.outputTarget !== 'obsidian' ? `吗？${settings.outputTarget === 'siyuan' ? '思源' : 'flomo'} 中已写入的记录需自行删除。` : '吗？同步时也会删除 Obsidian 中对应的卡片，包括卡片里补写的内容。'))) return;
       article = await rpc<Article>({ type: 'DELETE_ANNOTATION', page: page(), id: annotation.id });
       editorDraft = false;
       closeEditor();
@@ -358,7 +364,7 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
     editor.append(imagePreview(annotation.image), hint);
   } else editor.append(colors);
   editor.append(input, actions);
-  if (!outputStatus?.connected) editor.append(button(settings.outputTarget === 'flomo' ? '配置 flomo，开启自动写入' : '连接笔记文件夹，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
+  if (!outputStatus?.connected) editor.append(button(settings.outputTarget === 'siyuan' ? '配置思源，开启自动写入' : settings.outputTarget === 'flomo' ? '配置 flomo，开启自动写入' : '连接笔记文件夹，开启自动写入', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }, 'connect-obsidian'));
   editor.hidden = false;
   editorDraft = false;
   positionFloating(editor, rect);
@@ -390,7 +396,7 @@ function renderPanel(focusNote = false) {
   header.lastElementChild!.setAttribute('aria-label', '关闭侧边栏');
   const main = element('main');
   main.append(element('div', 'eyebrow', new URL(currentUrl).hostname), element('h1', '', document.title));
-  main.append(element('div', 'muted', excluded ? '此网站已暂停记录' : settings.outputTarget === 'flomo' ? '本页笔记 · flomo' : '本页笔记 · 本地保存'));
+  main.append(element('div', 'muted', excluded ? '此网站已暂停记录' : settings.outputTarget === 'siyuan' ? '本页笔记 · 思源' : settings.outputTarget === 'flomo' ? '本页笔记 · flomo' : '本页笔记 · 本地保存'));
   if (excluded) {
     main.append(element('p', 'empty', '可以在设置中移除此网站，恢复划线和阅读记录。'));
   } else {
@@ -470,7 +476,7 @@ function renderPanel(focusNote = false) {
       main.append(card);
     }
     if (article) main.append(button('移除本页记录', async () => {
-      if (!window.confirm(settings.outputTarget === 'flomo' ? '移除本页划线、笔记和阅读记录？flomo 中已写入的记录需自行删除。' : '移除本页划线、笔记和阅读记录？同步时也会删除 Obsidian 中本页的笔记卡片，包括卡片里补写的内容。')) return;
+      if (!window.confirm(settings.outputTarget !== 'obsidian' ? `移除本页划线、笔记和阅读记录？${settings.outputTarget === 'siyuan' ? '思源' : 'flomo'} 中已写入的记录需自行删除。` : '移除本页划线、笔记和阅读记录？同步时也会删除 Obsidian 中本页的笔记卡片，包括卡片里补写的内容。')) return;
       await rpc({ type: 'DELETE_ARTICLE', page: page() });
       article = null;
       pageDraft = undefined;
@@ -482,7 +488,13 @@ function renderPanel(focusNote = false) {
   }
   const footer = element('footer');
   if (article) footer.append(element('span', 'output-status', outputMessage()));
-  if (settings.outputTarget === 'flomo') {
+  if (settings.outputTarget === 'siyuan') {
+    if (outputStatus?.docId) {
+      const link = element('a', '', '在思源回顾 ↗');
+      link.href = `siyuan://blocks/${outputStatus.docId}`;
+      footer.append(link);
+    } else footer.append(button('配置思源笔记', async () => { await rpc({ type: 'OPEN_OPTIONS' }); }));
+  } else if (settings.outputTarget === 'flomo') {
     const link = element('a', '', '在 flomo 回顾 ↗');
     link.href = 'https://v.flomoapp.com/';
     link.target = '_blank';

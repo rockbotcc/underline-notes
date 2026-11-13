@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["browser/src/**/*.ts", "shared/**/*.ts", "obsidian/**/*.ts"]
+  "include": ["browser/src/**/*.ts", "shared/**/*.ts", "obsidian/**/*.ts", "siyuan/**/*.ts"]
 }

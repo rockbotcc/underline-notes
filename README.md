@@ -1,16 +1,17 @@
 # 划线笔记 / Underline Notes
 
-在 Chrome 中给网页划线、写批注，把摘录保存到本地文件夹或写入 flomo。默认使用本地文件夹，每条摘录都是可以用文本编辑器打开的 Markdown 文件；想按卡片回顾时，再用 Obsidian 打开同一个文件夹，启用配套插件即可。选择 flomo 则可在不同设备上回顾，无需配置本地文件夹或安装 Obsidian。
+在 Chrome 中给网页划线、写批注，把摘录保存到本地文件夹，或写入 flomo、思源笔记。默认使用本地文件夹，每条摘录都是可以用文本编辑器打开的 Markdown 文件；想按卡片回顾时，再用 Obsidian 打开同一个文件夹，启用配套插件即可。选择 flomo 则可在不同设备上回顾，无需配置本地文件夹或安装 Obsidian。思源用户可安装配套卡片盒插件，浏览摘录、随手记和每日回顾。
 
 浏览器扩展和 Obsidian 插件均支持可选的自动标签，只能从已有标签中选择，不允许模型创建未知标签。配置模型并开启该功能后，保存笔记时会把当前卡片的部分内容发送到所选模型服务。
 
 ## 本地安装
 
-桌面版 Chrome 120+ 可直接安装发布包。想用卡片回顾时，再下载 Obsidian 插件。
+桌面版 Chrome 120+ 可直接安装发布包。Obsidian 用户可下载配套插件；思源功能目前在源码开发版中，按下方说明构建安装。
 
 | 下载 | 用途 |
 | --- | --- |
 | [Chrome 扩展 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-chrome.zip) | 网页划线、批注，保存到本地文件夹或写入 flomo |
+| [思源插件安装说明](#思源插件安装与使用) | 思源 3.8.10+ 卡片流、随手记、每日回顾（源码开发版） |
 | [Obsidian 插件 ZIP](https://github.com/rockbotcc/underline-notes/releases/latest/download/underline-notes-obsidian.zip) | 在 Obsidian 1.6+ 中按卡片浏览已有摘录 |
 
 **让 Codex 帮你安装。** 按希望的保存位置，任选一句发给 Codex：
@@ -35,10 +36,10 @@
 
 ## 源码与发布
 
-正式版本通过 GitHub Actions 发布：同步更新 npm、Chrome、Obsidian 的版本号及 `versions.json`，添加 `releases/<版本>.md`，再推送与版本号一致的 Git 标签（不加 `v`）。工作流会执行类型检查、单元测试和 flomo 浏览器测试，生成两个安装 ZIP、Obsidian 更新文件及 SHA-256 校验文件，并创建 Release。本地可先运行 `npm run build` 和 `node scripts/package-release.mjs` 检查 `dist-release/` 中的产物。
+正式版本通过 GitHub Actions 发布：同步更新 npm、Chrome、Obsidian、思源的版本号及 `versions.json`，添加 `releases/<版本>.md`，再推送与版本号一致的 Git 标签（不加 `v`）。工作流会执行类型检查、单元测试和 flomo 浏览器测试，生成 Chrome、Obsidian、思源三个安装 ZIP、Obsidian 更新文件及 SHA-256 校验文件，并创建 Release。本地可先运行 `npm run build` 和 `node scripts/package-release.mjs` 检查 `dist-release/` 中的产物。
 
-- `browser/` 包含 Chrome 扩展的清单、设置页和源码。`obsidian/` 包含社区插件的源码与样式。两端共用的笔记模型、Markdown 格式和同步函数在 `shared/`。
-- 运行 `npm run check && npm test && npm run build` 验证两个插件。测试需要支持 TypeScript 类型剥离的 Node.js，例如 Node.js 22.18 及以上版本。
+- `browser/` 包含 Chrome 扩展的清单、设置页和源码。`obsidian/` 包含社区插件的源码与样式。`siyuan/` 包含思源卡片盒插件。各端共用的笔记模型、Markdown 格式和同步函数在 `shared/`。
+- 运行 `npm run check && npm test && npm run build` 验证所有端的源码。测试需要支持 TypeScript 类型剥离的 Node.js，例如 Node.js 22.18 及以上版本。
 - Chrome Web Store 使用 `browser/manifest.json` 中的版本号。运行 `npm run build` 和 `node scripts/package-release.mjs`，上传生成的 `dist-release/underline-notes-chrome.zip`；包内包含 `LICENSE`、`NOTICE` 和第三方依赖的 `THIRD_PARTY_LICENSES.txt`。商店文案、截图和审核说明见 [Chrome 发布材料](store/chrome/listing.md)，扩展的数据处理说明见[隐私政策](PRIVACY.md)。
 - Obsidian 社区目录读取仓库根目录的 `manifest.json`。发布时同步维护 `versions.json` 的最低兼容版本，在 GitHub 创建与插件版本完全相同的 Release 标签（如 `0.4.0`），并分别上传 `dist-release/` 下的 `main.js`、`manifest.json`、`styles.css`、`LICENSE` 和 `NOTICE`。Obsidian ZIP 也包含许可证与署名文件；独立更新使用的 `main.js` 内嵌完整许可证和 NOTICE。首次上架还需向 [Obsidian 社区目录](https://github.com/obsidianmd/obsidian-releases) 提交插件信息。
 
@@ -46,7 +47,7 @@
 
 Copyright 2026 rockbotcc。本项目采用 [Apache License 2.0](LICENSE)，作者与项目来源见 [NOTICE](NOTICE)。分发原版或修改版时，请遵守协议，附带许可证、保留适用的版权和署名声明，并在修改过的文件中明确标注修改。第三方组件沿用各自的许可证。
 
-## 卡片盒体验
+## Obsidian 卡片盒体验
 
 - **记录与回顾**：卡片按时间、标签、内容、来源排列，优先展示自己的批注和补写想法；摘录以细线区分，仅有摘录时按正文展示。右上角「…」菜单可编辑或打开笔记，Command/Ctrl + Enter 保存；浏览器连接同一仓库后双向同步。
 - **按来源**：侧栏「按来源」将同一篇文章的记录自动归组，展示记录数、内容摘要和已有 Markdown 图片引用的缩略图。点击来源标题或「查看全部记录」集中回顾、补写，并打开原文或本地全文。来源按最近更新排序，详情按记录时间排列；搜索命中一条笔记时仍展示该来源的全部记录。无来源的随手记单独归组。
@@ -103,6 +104,16 @@ AI 从整个仓库的已有标签中选择最多三个，并跳过重复的手�
 写入失败会保留队列，浏览器运行时通常每分钟重试，也可点击「立即同步笔记」。网络超时可能发生“flomo 已保存但浏览器未收到确认”，此时重试仍可能产生重复记录。设置页和网页侧栏会显示当前状态。
 
 切换位置会暂停原位置的输出，已有笔记和导入的备份不会批量补发到 flomo。切回本地 Obsidian 后，原有本地文件队列继续同步。每台设备需分别安装和配置浏览器扩展；网页划线定位、浏览器备份和本地 Obsidian 文件不会通过此功能跨设备同步。API URL 只保存在本机扩展数据库中，不发送给网页，也不包含在 JSON 资料备份中。
+
+## 写入思源笔记
+
+选择扩展设置中的 **思源笔记**，填写服务地址和 API Token，点击「测试连接并读取笔记本」，选择已打开的笔记本并保存。默认地址为 `http://127.0.0.1:6806`，Token 在思源「设置 → 认证」（部分版本在「关于」）中获取。首版需要结构化文档 API，以思源 3.8.10 为兼容基线；不支持时会提示升级。无需安装配套思源插件。本机地址支持 HTTP，其他服务地址要求 HTTPS，不支持带路径前缀的代理地址。
+
+启用后新增或修改的每条摘录、批注和文章笔记会写入所选笔记本的「划线笔记」父文档下，每条卡片一个文档。再次修改会在原文档追加带时间的更新版本，思源中的补写与旧版本保留；思源编辑不会回传浏览器。图片保存说明和原图链接，图片文件、全文和阅读日志不上传。AI 标签仍需连接 Obsidian 的候选标签文件，不读取思源标签库。
+
+思源关闭或网络中断时，笔记先保存在浏览器队列，恢复后重试，也可以点击「立即同步笔记」。创建和追加使用持久化 ID，响应丢失后先核对已写入版本。若思源文档被删除或移出目标笔记本，会暂停写入；点击设置中的「重新创建缺失文档」后可创建新的副本。删除浏览器笔记只取消待发送内容，不删除已写入思源的内容。
+
+切换输出目标会暂停原队列，切回后继续；更换地址或笔记本不会把旧队列改投新位置。已有笔记和导入备份不会批量补发。Token 仅保存在扩展本机数据库，不返回网页或进入资料备份。卸载扩展会丢失发送记录，跨设备或重新安装后的重复发送不在去重保证内。
 
 ## 本地文件
 
@@ -176,3 +187,41 @@ npm run test:obsidian
 `node scripts/prepare-preview.mjs` 将最近一次浏览器测试的真实输出和插件构建复制到 `test-results/NotingPreviewVault/`。用 Obsidian 打开该文件夹即可独立验收，不会安装到个人仓库。测试仓库中的随手记和补写是演示内容。配套插件已在桌面 Obsidian 1.14.5 验证；移动端布局与真实设备尚未验收。
 
 架构包括 Content Script（选区、高亮、阅读采集）、Service Worker（事务、消息、文件队列）和设置页（文件夹授权、备份恢复）。内容 UI 使用 Shadow DOM 隔离，网页高亮使用 CSS Custom Highlight API。构建使用 TypeScript 和 esbuild，正文识别使用 Mozilla Readability，Markdown 转换使用 Turndown，IndexedDB 使用 idb。
+
+## 思源插件安装与使用
+
+需要桌面版思源 **3.8.10+**。思源输出及配套插件目前属于源码开发版，尚未上架集市或发布到 GitHub Release；上方旧版下载包不包含这些新增功能。实际验收环境为 macOS ARM64、思源 3.8.10。
+
+1. **构建插件。** 安装 Node.js 22.18+，在本项目源码目录运行：
+
+   ```sh
+   npm ci
+   npm run build
+   ```
+
+2. **找到思源工作空间。** 使用思源当前工作空间的根目录（包含 `conf/`、`data/`），将构建得到的整个 `dist-siyuan/underline-notes/` 文件夹复制到其中的 `data/plugins/`。最终应直接存在：
+
+   ```text
+   <思源工作空间>/data/plugins/underline-notes/plugin.json
+   <思源工作空间>/data/plugins/underline-notes/index.js
+   <思源工作空间>/data/plugins/underline-notes/index.css
+   ```
+
+   这里是插件目录，不是笔记本目录；不要把 Obsidian Markdown 文件直接复制进思源的数据目录。
+
+3. **启用插件。** 打开「设置 → 集市 → 已下载 → 插件」，启用「划线笔记」。首次使用插件时按思源提示确认信任；若列表未出现插件，核对上述层级后重启思源。
+4. **打开卡片盒。** 点击顶部「划线笔记 · 卡片盒」图标，或通过命令面板打开。插件本身无需 API Token，也不依赖 Chrome，可直接使用随手记。
+5. **可选：连接网页采集。** 加载本次构建的 `dist/` Chrome 扩展，在扩展设置中选择思源，填写地址、Token 和目标笔记本，按[写入思源笔记](#写入思源笔记)验证。采集时需保持思源运行。
+
+**日常操作**
+
+- **随手记**：在「全部笔记」顶部写想法，选择已打开的笔记本，点击「记录」或按 ⌘/Ctrl + Enter。每条记录是该笔记本下独立的原生文档；下次记住所选笔记本，`#标签`、`#领域/写作` 可参与筛选。
+- **每日回顾**：点击左侧「每日回顾」，从当前搜索、标签及笔记本范围中每天稳定选取最多 8 张卡。支持上一张、下一张、补写想法和完成回顾；与 Obsidian 共用选卡逻辑，不保存完成进度，不含提醒或间隔记忆算法。
+- **补写与打开**：点击卡片「… → 补写想法」或双击卡片，⌘/Ctrl + Enter 保存；Esc 收起并保留草稿。「… → 打开」进入完整原生文档，浏览器后续同步保留补写内容。
+- **失败恢复**：草稿和目标笔记本保存在工作空间的插件数据中。写入结果不确定时保留草稿，点击「重试记录」或「重试保存」核对，避免重复创建。首版面向单个活跃客户端，不支持多设备同时编辑同一份插件草稿。
+
+**升级**：先停用插件，将旧插件文件夹备份到 `data/plugins/` 之外，再复制新构建文件并启用，关闭旧卡片盒页签后重新打开。保留 `data/storage/petal/underline-notes/` 中的草稿与保存状态。卸载插件不会删除原生卡片和已保存想法。
+
+需要 ZIP 时运行 `node scripts/package-release.mjs`，生成 `dist-release/underline-notes-siyuan.zip`。解压后同样放置整个 `underline-notes` 文件夹。
+
+思源版暂不提供按来源聚合、阅读足迹、AI 自动标签、移动端卡片盒或双向修改浏览器摘录；普通文档不会自动加入卡片盒。详见[插件说明](siyuan/README.md)、[安装指南](INSTALL.md)、[方案](docs/siyuan-plugin-plan.md)和[测试记录](docs/siyuan-testing.md)。

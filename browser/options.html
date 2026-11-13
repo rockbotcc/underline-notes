@@ -20,7 +20,19 @@
       <section class="card" id="destination">
         <div class="section-title"><div><h2>笔记写入位置</h2><p>笔记先保存在浏览器，再写入你选择的位置。</p></div></div>
         <label class="field" for="output-target">写入位置</label>
-        <select id="output-target" form="settings-form"><option value="obsidian">本地 Obsidian（默认）</option><option value="flomo">flomo</option></select>
+        <select id="output-target" form="settings-form"><option value="obsidian">本地 Obsidian（默认）</option><option value="flomo">flomo</option><option value="siyuan">思源笔记</option></select>
+        <div id="siyuan-settings" hidden>
+          <label class="field" for="siyuan-base-url">思源服务地址<span>同机桌面版默认地址；写入时请保持思源运行。</span></label>
+          <input id="siyuan-base-url" type="url" form="settings-form" value="http://127.0.0.1:6806" maxlength="2000">
+          <label class="field" for="siyuan-token">API Token<span>从思源「设置 → 认证」复制；部分版本位于「设置 → 关于」。</span></label>
+          <input id="siyuan-token" type="password" form="settings-form" autocomplete="off" maxlength="4000">
+          <div class="actions"><button id="siyuan-test" type="button">测试连接并读取笔记本</button></div>
+          <p id="siyuan-test-result" role="status"></p>
+          <label class="field" for="siyuan-notebook">目标笔记本</label>
+          <select id="siyuan-notebook" form="settings-form"><option value="">请先测试连接</option></select>
+          <p class="hint">在「划线笔记」下按条保存。修改已发送笔记会追加更新版本，保留思源中的补写；删除浏览器记录不会删除思源文档。首版写入文字及图片链接，全文和阅读日志保留在浏览器。需要支持结构化文档 API 的思源版本（验收基线 3.8.10）。</p>
+          <div class="actions"><button id="siyuan-recreate" type="button">重新创建缺失文档</button></div>
+        </div>
         <div id="flomo-settings" hidden>
           <label class="field" for="flomo-api-url">flomo API URL<span>在 <a href="https://flomoapp.com/mine?source=incoming_webhook" target="_blank" rel="noreferrer">flomo 的 API 设置</a>中复制专属记录 API URL（需相应会员权限）。</span></label>
           <input type="password" id="flomo-api-url" form="settings-form" autocomplete="off" spellcheck="false" maxlength="2000" placeholder="https://flomoapp.com/iwh/…/…/">
@@ -51,7 +63,7 @@
           <div class="actions destination-actions"><button class="primary" type="submit">保存模型设置</button></div>
         </section>
         <section class="card" id="reading">
-          <div class="section-title"><div><h2>阅读记录</h2><p>使用本地 Obsidian 时，读过的文章会按天整理为 Markdown 阅读日志；flomo 不接收自动阅读记录。</p></div></div>
+          <div class="section-title"><div><h2>阅读记录</h2><p>使用本地 Obsidian 时，读过的文章会按天整理为 Markdown 阅读日志；flomo 和思源不接收自动阅读记录。</p></div></div>
           <label class="toggle-row"><span><strong>自动记录阅读</strong><small>文章页在前台活跃约 15 秒后收录，闲置 60 秒暂停计时。</small></span><input type="checkbox" id="record-history" role="switch"><span class="switch" aria-hidden="true"></span></label>
           <label class="field" for="excluded-domains">排除的网站<span>每行一个域名，也会排除它的子域名。划线和阅读记录都会停用。</span></label>
           <textarea id="excluded-domains" rows="3" placeholder="mail.google.com&#10;example.com"></textarea>

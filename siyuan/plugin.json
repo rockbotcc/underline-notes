@@ -1,0 +1,14 @@
+{
+  "name": "underline-notes",
+  "author": "Underline Notes",
+  "url": "https://github.com/rockbotcc/underline-notes",
+  "version": "0.4.1",
+  "minAppVersion": "3.8.10",
+  "backends": ["windows", "linux", "darwin", "docker"],
+  "frontends": ["desktop", "desktop-window", "browser-desktop"],
+  "disabledInPublish": true,
+  "displayName": {"default": "Underline Notes", "zh-CN": "划线笔记"},
+  "description": {"default": "Browse highlights, capture quick notes and revisit ideas with daily review in SiYuan.", "zh-CN": "网页摘录卡片流、随手记、每日回顾、搜索筛选与补写想法。"},
+  "readme": {"default": "README.md"},
+  "keywords": ["highlight", "card", "笔记", "摘录"]
+}

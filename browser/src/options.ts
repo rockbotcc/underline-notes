@@ -52,6 +52,13 @@ async function refresh(fillForm = false) {
     get<HTMLInputElement>('vault-name').value = currentSettings.vaultName;
     get<HTMLSelectElement>('output-target').value = currentSettings.outputTarget;
     get<HTMLInputElement>('flomo-api-url').value = currentSettings.flomoApiUrl;
+    get<HTMLInputElement>('siyuan-base-url').value = currentSettings.siyuan?.baseUrl || 'http://127.0.0.1:6806';
+    get<HTMLInputElement>('siyuan-token').value = currentSettings.siyuan?.apiToken || '';
+    const notebook = get<HTMLSelectElement>('siyuan-notebook');
+    if (currentSettings.siyuan) {
+      if (![...notebook.options].some(item => item.value === currentSettings.siyuan!.notebookId)) notebook.add(new Option(currentSettings.siyuan.notebookName || '已连接笔记本', currentSettings.siyuan.notebookId));
+      notebook.value = currentSettings.siyuan.notebookId;
+    }
     const ai = currentSettings.ai ?? DEFAULT_TAG_AI;
     get<HTMLInputElement>('ai-enabled').checked = ai.enabled;
     get<HTMLInputElement>('ai-base-url').value = ai.baseUrl;
@@ -71,16 +78,25 @@ async function refresh(fillForm = false) {
   link.hidden = !currentSettings.vaultName || !status.directoryName;
   link.href = obsidianUrl(currentSettings);
   const isFlomo = currentSettings.outputTarget === 'flomo';
+  const isSiyuan = currentSettings.outputTarget === 'siyuan';
+  const remote = isFlomo || isSiyuan;
   get('authorize').hidden = !status.directoryName;
-  for (const id of ['local-flow', 'local-help', 'restore-directory']) get(id).hidden = isFlomo;
-  get('choose-directory').textContent = isFlomo ? '连接 Obsidian 文件夹以读取标签' : '选择笔记文件夹';
-  link.hidden ||= isFlomo;
+  for (const id of ['local-flow', 'local-help', 'restore-directory']) get(id).hidden = remote;
+  get('choose-directory').textContent = remote ? '连接 Obsidian 文件夹以读取标签' : '选择笔记文件夹';
+  link.hidden ||= remote;
   get('connection-title').textContent = isFlomo ? '写入 flomo' : '连接笔记文件夹';
   get('connection-description').textContent = isFlomo ? '按条写入划线和笔记，失败后保留在本机队列中重试。' : '新建或选择文件夹，资料会保存在其中的 Reading/。';
   if (isFlomo) {
     get('connection-state').textContent = currentSettings.flomoApiUrl ? 'API 已配置' : '尚未配置';
     get('folder-name').textContent = '每条记录包含摘录或文章笔记、批注和来源链接。切换写入位置会暂停原位置的写入。';
   }
+  if (isSiyuan) {
+    get('connection-title').textContent = '写入思源笔记';
+    get('connection-description').textContent = '先保存本地，再写入思源；思源关闭时保留队列。';
+    get('connection-state').textContent = currentSettings.siyuan ? 'API 已配置' : '尚未配置';
+    get('folder-name').textContent = '新增卡片创建文档，修改追加版本，思源中的补写会保留。';
+  }
+  get('siyuan-recreate').hidden = !status.pending.some(item => (item as Pending & { errorCode?: string }).errorCode === 'missing');
   get('sync-error').hidden = !status.syncError;
   get('sync-error').textContent = status.syncError || '';
 }
@@ -89,6 +105,10 @@ async function flush() {
   await rpc({ type: 'FLUSH' });
   const status = await rpc<Status>({ type: 'STATUS' });
   if (status.syncError) throw new Error(status.syncError);
+  if (status.settings.outputTarget === 'siyuan') {
+    notice(status.pending.length ? '思源仍有待写入内容，请查看状态或稍后重试。' : '思源没有待写入的笔记。');
+    return;
+  }
   if (status.settings.outputTarget === 'flomo') {
     notice(status.pending.length ? '正在写入 flomo，剩余记录会继续重试。' : 'flomo 没有待写入的笔记。');
     return;
@@ -130,11 +150,34 @@ action('flush', flush);
 
 function updateDestinationForm() {
   const isFlomo = get<HTMLSelectElement>('output-target').value === 'flomo';
+  const isSiyuan = get<HTMLSelectElement>('output-target').value === 'siyuan';
+  get('siyuan-settings').hidden = !isSiyuan;
+  for (const id of ['siyuan-base-url', 'siyuan-token', 'siyuan-notebook']) {
+    get<HTMLInputElement>(id).required = isSiyuan;
+    get<HTMLInputElement>(id).disabled = !isSiyuan;
+  }
   get('flomo-settings').hidden = !isFlomo;
-  get('vault-settings').hidden = isFlomo;
+  get('vault-settings').hidden = isFlomo || isSiyuan;
   get<HTMLInputElement>('flomo-api-url').required = isFlomo;
 }
 get('output-target').addEventListener('change', updateDestinationForm);
+for (const id of ['siyuan-base-url', 'siyuan-token']) get(id).addEventListener('input', () => {
+  get<HTMLSelectElement>('siyuan-notebook').replaceChildren(new Option('请重新测试连接', ''));
+  get('siyuan-test-result').textContent = '';
+});
+action('siyuan-test', async () => {
+  const result = await rpc<{ version: string; notebooks: { id: string; name: string }[] }>({ type: 'SIYUAN_TEST',
+    baseUrl: get<HTMLInputElement>('siyuan-base-url').value, apiToken: get<HTMLInputElement>('siyuan-token').value });
+  const select = get<HTMLSelectElement>('siyuan-notebook');
+  select.replaceChildren(new Option('请选择笔记本', ''), ...result.notebooks.map(item => new Option(item.name, item.id)));
+  if (result.notebooks.length === 1) select.value = result.notebooks[0].id;
+  get('siyuan-test-result').textContent = `已连接思源 ${result.version}，找到 ${result.notebooks.length} 个已打开笔记本。`;
+});
+action('siyuan-recreate', async () => {
+  if (!window.confirm('为缺失的思源目标重新创建文档？已移出原笔记本的文档会保留，新副本将写入当前目标。')) return;
+  await rpc({ type: 'SIYUAN_RECREATE' });
+  notice('已处理缺失文档，请查看同步状态。');
+});
 
 get<HTMLFormElement>('settings-form').addEventListener('submit', async event => {
   event.preventDefault();
@@ -149,6 +192,10 @@ get<HTMLFormElement>('settings-form').addEventListener('submit', async event => 
       },
       outputTarget: get<HTMLSelectElement>('output-target').value as Settings['outputTarget'],
       flomoApiUrl: get<HTMLInputElement>('flomo-api-url').value.trim(),
+      siyuan: get<HTMLSelectElement>('output-target').value === 'siyuan' ? {
+        baseUrl: get<HTMLInputElement>('siyuan-base-url').value.trim(), apiToken: get<HTMLInputElement>('siyuan-token').value.trim(),
+        notebookId: get<HTMLSelectElement>('siyuan-notebook').value, profileId: '',
+      } : currentSettings.siyuan,
       recordHistory: get<HTMLInputElement>('record-history').checked,
       excludedDomains: get<HTMLTextAreaElement>('excluded-domains').value.split(/[\s,，]+/).filter(Boolean),
       vaultName: get<HTMLInputElement>('vault-name').value,

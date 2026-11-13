@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const json = async file => JSON.parse(await readFile(file, 'utf8'));
 const { version } = await json('package.json');
-for (const file of ['package-lock.json', 'manifest.json', 'browser/manifest.json', 'dist/manifest.json', 'dist-obsidian/noting/manifest.json']) {
+for (const file of ['package-lock.json', 'manifest.json', 'browser/manifest.json', 'dist/manifest.json', 'dist-obsidian/noting/manifest.json', 'siyuan/plugin.json', 'dist-siyuan/underline-notes/plugin.json']) {
   if ((await json(file)).version !== version) throw new Error(`Version mismatch: ${file}`);
 }
 if (process.env.GITHUB_REF_TYPE === 'tag' && process.env.GITHUB_REF_NAME !== version) throw new Error('Release tag must match the package version');
@@ -19,6 +19,7 @@ await mkdir(output, { recursive: true });
 execFileSync('zip', ['-q', '-r', path.join(output, 'underline-notes-chrome.zip'), 'manifest.json', 'background.js', 'content.js', 'options.js', 'options.html', 'options.css', 'icons', 'LICENSE', 'NOTICE', 'THIRD_PARTY_LICENSES.txt'], { cwd: 'dist' });
 execFileSync('zip', ['-q', path.join(output, 'underline-notes-obsidian.zip'), 'noting/main.js', 'noting/manifest.json', 'noting/styles.css', 'noting/LICENSE', 'noting/NOTICE'], { cwd: 'dist-obsidian' });
 for (const name of ['main.js', 'manifest.json', 'styles.css', 'LICENSE', 'NOTICE']) await copyFile(`dist-obsidian/noting/${name}`, path.join(output, name));
+execFileSync('zip', ['-q', '-r', path.join(output, 'underline-notes-siyuan.zip'), 'underline-notes'], { cwd: 'dist-siyuan' });
 const checksums = [];
 for (const name of (await readdir(output)).sort()) {
   if (name.endsWith('.zip')) execFileSync('unzip', ['-tq', path.join(output, name)]);

@@ -107,10 +107,7 @@ export function filterMemos(memos: Memo[], query: string, tag: string, mode: str
   const words = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   return memos.filter(memo => (!tag || memo.tags.some(candidate => matchesTag(candidate, tag))) && (mode !== 'inbox' || (!memo.note.trim() && !memo.personal.trim())) && words.every(word => [memo.quote, memo.note, memo.personal, memo.source, ...memo.tags].join('\n').toLocaleLowerCase().includes(word)));
 }
-export function reviewMemos(memos: Memo[], day: string, limit = 8): Memo[] {
-  const hash = (text: string) => { let value = 2166136261; for (const char of text) value = Math.imul(value ^ char.charCodeAt(0), 16777619); return value >>> 0; };
-  return [...memos].sort((a, b) => hash(day + a.id) - hash(day + b.id) || a.id.localeCompare(b.id)).slice(0, limit);
-}
+export { reviewCards as reviewMemos } from '../shared/review.ts';
 export function localMemo(text: string, id: string, now: string): string {
   const title = text.trim().split('\n')[0].replace(/^#+\s*/, '').slice(0, 48) || '随手记';
   return ['---', 'schema_version: 2', 'card_id: ' + id, 'title: ' + JSON.stringify(title), 'source_title: "随手记"', 'created_at: ' + now, 'tags: [noting/想法]', '---', '', '# ' + title, '', MARKER, '', text.trim(), ''].join('\n');
