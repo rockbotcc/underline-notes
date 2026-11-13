@@ -30,7 +30,9 @@
           <p id="siyuan-test-result" role="status"></p>
           <label class="field" for="siyuan-notebook">目标笔记本</label>
           <select id="siyuan-notebook" form="settings-form"><option value="">请先测试连接</option></select>
-          <p class="hint">在「划线笔记」下按条保存。修改已发送笔记会追加更新版本，保留思源中的补写；删除浏览器记录不会删除思源文档。首版写入文字及图片链接，全文和阅读日志保留在浏览器。需要支持结构化文档 API 的思源版本（验收基线 3.8.10）。</p>
+          <p class="hint">在「划线笔记」下按条保存。修改已发送笔记会追加更新版本，保留思源中的补写；删除浏览器记录不会删除思源文档。图片自动保存为思源附件并显示在正文中，全文和阅读日志保留在浏览器。需要支持结构化文档 API 的思源版本（验收基线 3.8.10）。</p>
+          <div class="actions"><button id="siyuan-backfill-images" type="button">补传已同步笔记的图片</button></div>
+          <p class="hint">按已保存的思源配置批量补传，保留原文档及补写；本地没有图片文件时会尝试下载原图。已完成的图片不会重复追加。</p>
           <div class="actions"><button id="siyuan-recreate" type="button">重新创建缺失文档</button></div>
         </div>
         <div id="flomo-settings" hidden>

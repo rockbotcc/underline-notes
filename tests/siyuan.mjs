@@ -11,12 +11,27 @@ const otherNotebook = '20261112000000-otherxx';
 const documents = new Map();
 let writes = 0, offline = false, unsupported = false, loseResponse = false, holdWrite, heldWrite;
 const calls = [];
+let uploads = 0, failUpload = false;
 const server = createServer(async (req, res) => {
+  if (req.url === '/image.svg') {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.end('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect width="200" height="100" fill="green"/></svg>'); return;
+  }
   if (!req.url.startsWith('/api/')) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.end('<title>思源测试 C/C++</title><article><h1>思源测试</h1><p id="quote">值得保留的原文摘录。</p><p>' + '阅读与思考。'.repeat(300) + '</p></article>'); return;
+    res.end('<title>思源测试 C/C++</title><article><h1>思源测试</h1><img id="image" src="/image.svg" alt="测试图片" width="200" height="100"><p id="quote">值得保留的原文摘录。</p><p>' + '阅读与思考。'.repeat(300) + '</p></article>'); return;
   }
   const chunks = []; for await (const chunk of req) chunks.push(chunk);
+  if (req.url === '/api/asset/upload') {
+    assert.equal(req.headers.authorization, 'Token test-secret');
+    assert.match(req.headers['content-type'], /multipart\/form-data; boundary=/);
+    const raw = Buffer.concat(chunks).toString();
+    assert.ok(raw.includes('/assets/')); assert.ok(raw.includes('<svg'));
+    const filename = raw.match(/filename="([^"]+)"/)[1];
+    uploads++;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ code: 0, data: failUpload ? { errFiles: [filename], succMap: {} } : { errFiles: [], succMap: { [filename]: 'assets/test-image.svg' } } })); return;
+  }
   const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
   calls.push({ path: req.url, body });
   const reply = data => { if (!res.destroyed) { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ code: 0, data })); } };
@@ -177,6 +192,65 @@ try {
     { ...settings, siyuan: { ...settings.siyuan, notebookId: otherNotebook } });
   assert.equal(rejected.ok, false); assert.match(rejected.error, /不支持/); assert.equal(writes, 10);
   unsupported = false;
+  // Upload failures retain the job; successful retry embeds an asset, edits reuse it.
+  failUpload = true;
+  await page.locator('#image').hover();
+  await page.getByRole('button', { name: '记笔记', exact: true }).click();
+  await page.getByRole('textbox', { name: '图片笔记', exact: true }).fill('图片第一版');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('dialog', { name: '编辑图片笔记', exact: true }).waitFor({ state: 'hidden' });
+  await call({ type: 'FLUSH' });
+  assert.equal(writes, 10, 'failed uploads must not create a link-only note');
+  assert.match((await call({ type: 'STATUS' })).syncError, /附件上传未完成/);
+  failUpload = false;
+  await call({ type: 'FLUSH' });
+  const imageCard = [...documents.values()].find(doc => doc.markdown.includes('图片第一版'));
+  assert.ok(imageCard?.markdown.includes('![测试图片](<assets/test-image.svg>)'));
+  const uploaded = uploads;
+  await page.mouse.move(0, 0); await page.locator('#image').hover();
+  await page.getByRole('button', { name: '查看笔记', exact: true }).click();
+  const reader = page.getByRole('dialog', { name: '查看图片笔记', exact: true });
+  await reader.getByRole('button', { name: '编辑笔记', exact: true }).click();
+  await page.getByRole('textbox', { name: '图片笔记', exact: true }).fill('图片第二版');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('dialog', { name: '编辑图片笔记', exact: true }).waitFor({ state: 'hidden' });
+  await call({ type: 'FLUSH' });
+  assert.equal(uploads, uploaded);
+  assert.ok(imageCard.markdown.includes('图片第二版'));
+  assert.equal((imageCard.markdown.match(/!\[测试图片\]/g) || []).length, 2);
+  assert.equal((await call({ type: 'STATUS' })).pending.length, 0);
+  // Simulate an already-synced legacy image without local bytes, then backfill in place.
+  const beforeBackfill = writes;
+  await options.evaluate(async () => {
+    const db = await new Promise(resolve => { const req = indexedDB.open('noting'); req.onsuccess = () => resolve(req.result); });
+    const tx = db.transaction(['siyuanJobs', 'siyuanBindings', 'articles', 'meta'], 'readwrite');
+    const jobs = tx.objectStore('siyuanJobs').getAll();
+    jobs.onsuccess = () => {
+      const job = jobs.result.find(job => job.sentContent?.includes('图片第二版'));
+      job.sentContent = 'legacy image link'; job.desired = job.sentContent;
+      tx.objectStore('siyuanJobs').put(job);
+      const binding = tx.objectStore('siyuanBindings').get(job.key);
+      binding.onsuccess = () => tx.objectStore('siyuanBindings').put({ ...binding.result, sentContent: job.sentContent });
+      const article = tx.objectStore('articles').get(job.articleId);
+      article.onsuccess = () => {
+        delete article.result.annotations.find(item => item.id === job.cardId).image.data;
+        tx.objectStore('articles').put(article.result);
+      };
+    };
+    await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
+  });
+  const previousCount = documents.size;
+  imageCard.markdown += '\n思源里的补写';
+  const backfill = await call({ type: 'SIYUAN_BACKFILL_IMAGES' });
+  assert.equal(backfill.count, 1);
+  assert.equal(documents.size, previousCount);
+  assert.equal(writes, beforeBackfill + 1);
+  assert.ok(imageCard.markdown.includes('思源里的补写'));
+  assert.equal((await call({ type: 'STATUS' })).pending.length, 0);
+  await options.getByRole('button', { name: '补传已同步笔记的图片', exact: true }).click();
+  await options.getByText('已安排 1 条图片笔记补传', { exact: false }).waitFor();
+  assert.equal(writes, beforeBackfill + 1, 'repeated backfill must not append again');
+  assert.equal(uploads, uploaded, 'reuse existing assets during backfill');
   await mkdir('test-results', { recursive: true });
   await options.reload(); await options.waitForFunction(() => document.querySelector('#output-target').value === 'siyuan');
   await options.screenshot({ path: 'test-results/siyuan-settings.png', fullPage: true });

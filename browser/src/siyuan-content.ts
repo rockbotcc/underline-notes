@@ -5,10 +5,10 @@ function literal(value: string): string { return value.replace(/([\\`*_{}\[\]<>#
 function noteMarkdown(value: string): string {
   return value.replace(/\{:/g, '\\{:').replace(/\{\{\{/g, '\\{\\{\\{').replace(/\}\}\}/g, '\\}\\}\\}');
 }
-export function siyuanContent(article: Article, annotation?: Annotation): string {
+export function siyuanContent(article: Article, annotation?: Annotation, imagePath?: string): string {
   const note = (annotation ? annotation.note : article.pageNote).trim();
   const quote = annotation ? annotation.image
-    ? `${literal(annotation.image.alt || '图片')}\n\n[原图链接](<${annotation.image.url.replace(/[<>]/g, encodeURIComponent)}>)（图片文件尚未上传）`
+    ? `${imagePath ? '![' + literal((annotation.image.alt || '图片').replace(/\s+/g, ' ')) + '](<' + imagePath + '>)' : literal(annotation.image.alt || '图片')}\n\n[原图链接](<${annotation.image.url.replace(/[<>]/g, encodeURIComponent)}>)${imagePath ? '' : '（图片文件尚未上传）'}`
     : annotation.anchor.exact.split('\n').map(line => '> ' + literal(line)).join('\n') : '';
   return [noteMarkdown(note), quote, `来源：[${literal(article.title)}](<${article.url.replace(/[<>]/g, encodeURIComponent)}>)`,
     `摘录时间：${annotation?.createdAt || article.createdAt}`].filter(Boolean).join('\n\n');

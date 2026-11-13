@@ -55,3 +55,43 @@ test('SiYuan never writes remote thoughts when durable draft save fails', async 
   const store = new ThoughtStore({ [doc]: { text: 'draft' } }, (async () => { writes++; }) as Request, async () => { throw new Error('disk full'); });
   await assert.rejects(store.submit(doc), /disk full/); assert.equal(writes, 0); assert.equal(store.drafts[doc].text, 'draft');
 });
+
+test('SiYuan deletion resolves current document path and clears persisted draft after success', async () => {
+  const calls: string[] = []; let persisted: Drafts = {};
+  const request = (async (endpoint: string, body: Record<string, unknown>) => {
+    calls.push(endpoint);
+    if (endpoint.endsWith('/sql')) return [{ box: '20261113090000-bbbbbbb', path: `/20261113090000-ccccccc/${doc}.sy` }];
+    if (endpoint.endsWith('/removeDoc')) assert.deepEqual(body, { notebook: '20261113090000-bbbbbbb', path: `/20261113090000-ccccccc/${doc}.sy` });
+  }) as Request;
+  const store = new ThoughtStore({ [doc]: { text: '草稿' } }, request, async drafts => { persisted = drafts; });
+  await store.remove(doc);
+  assert.deepEqual(calls, ['/api/sqlite/flushTransaction', '/api/query/sql', '/api/filetree/removeDoc']);
+  assert.deepEqual(store.drafts, {}); assert.deepEqual(persisted, {});
+});
+
+test('SiYuan deletion failure preserves drafts and rejects invalid IDs before requests', async () => {
+  let calls = 0;
+  const request = (async (endpoint: string) => {
+    calls++;
+    if (endpoint.endsWith('/sql')) return [{ box: '20261113090000-bbbbbbb', path: `/${doc}.sy` }];
+    if (endpoint.endsWith('/removeDoc')) throw new Error('离线');
+  }) as Request;
+  const store = new ThoughtStore({ [doc]: { text: '草稿' } }, request, async () => {});
+  await assert.rejects(store.remove("bad'id"), /无效/); assert.equal(calls, 0);
+  await assert.rejects(store.remove(doc), /离线/); assert.equal(store.drafts[doc].text, '草稿');
+});
+
+test('SiYuan deletion blocks concurrent saves and retries cleanup after the document is gone', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const request = (async (endpoint: string) => {
+    if (endpoint.endsWith('/sql')) { await gate; return []; }
+    assert.ok(!endpoint.endsWith('/removeDoc'));
+  }) as Request;
+  const store = new ThoughtStore({ [doc]: { text: '草稿' } }, request, async () => {});
+  const deletion = store.remove(doc);
+  await assert.rejects(store.submit(doc), /正在删除/);
+  await assert.rejects(store.edit(doc, '新内容'), /正在删除/);
+  await assert.rejects(store.remove(doc), /正在保存或删除/);
+  release(); await deletion; assert.deepEqual(store.drafts, {});
+});

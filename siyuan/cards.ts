@@ -66,6 +66,7 @@ export function hasThought(markdown: string, attempt: Attempt): boolean {
 export class ThoughtStore {
   private writes: Promise<unknown> = Promise.resolve();
   private pending = new Map<string, Promise<void>>();
+  private deleting = new Set<string>();
   drafts: Drafts;
   private request: Request;
   private persist: (drafts: Drafts) => Promise<unknown>;
@@ -77,13 +78,33 @@ export class ThoughtStore {
     const next = this.writes.catch(() => {}).then(() => this.persist(snapshot)); this.writes = next; return next;
   }
   async edit(docId: string, text: string) {
+    if (this.deleting.has(docId)) throw new Error('笔记正在删除，请稍后重试。');
     if (this.drafts[docId]?.attempt) throw new Error('上次保存结果待确认，请先重试保存。');
     if (text) this.drafts[docId] = { text }; else delete this.drafts[docId];
     await this.save();
   }
   submit(docId: string): Promise<void> {
+    if (this.deleting.has(docId)) return Promise.reject(new Error('笔记正在删除，请稍后重试。'));
     const pending = this.pending.get(docId); if (pending) return pending;
     const run = this.commit(docId).finally(() => this.pending.delete(docId)); this.pending.set(docId, run); return run;
+  }
+  async remove(docId: string): Promise<void> {
+    if (!SIYUAN_ID.test(docId)) throw new Error('无效的文档 ID。');
+    if (this.pending.has(docId) || this.deleting.has(docId)) throw new Error('笔记正在保存或删除，请稍后重试。');
+    this.deleting.add(docId);
+    try {
+      await this.request('/api/sqlite/flushTransaction');
+      const rows = await this.request<{ box: string; path: string }[]>('/api/query/sql', { stmt: `SELECT box, path FROM blocks WHERE id='${docId}' AND type='d'` });
+      if (!Array.isArray(rows)) throw new Error('无法核对笔记位置，请刷新后重试。');
+      if (rows.length) {
+        const location = rows[0];
+        if (!SIYUAN_ID.test(location.box) || !new RegExp(`^(?:/\\d{14}-[a-z0-9]{7})*/${docId}\\.sy$`).test(location.path)) throw new Error('笔记位置异常，请刷新后重试。');
+        await this.request('/api/filetree/removeDoc', { notebook: location.box, path: location.path });
+      }
+      const draft = this.drafts[docId];
+      delete this.drafts[docId];
+      try { await this.save(); } catch (error) { if (draft) this.drafts[docId] = draft; throw error; }
+    } finally { this.deleting.delete(docId); }
   }
   private async commit(docId: string) {
     if (!SIYUAN_ID.test(docId)) throw new Error('无效的文档 ID。');

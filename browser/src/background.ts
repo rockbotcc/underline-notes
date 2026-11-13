@@ -1,7 +1,7 @@
 import { database, dirty, getDirectory, getSettings, saveArticle, type WriteTransaction } from './db';
 import { flushOutput } from './output';
 import { checkedSiyuanUrl, siyuanProfile, SIYUAN_ID, SiyuanClient } from './siyuan-api';
-import { queueSiyuan, pendingSiyuan, recreateMissing } from './siyuan-output';
+import { queueSiyuan, pendingSiyuan, recreateMissing, queueSiyuanImageBackfill } from './siyuan-output';
 import { checkedFlomoUrl, flomoContent } from './flomo-api';
 import { validateBackup } from './backup';
 import { autoTagNote, DEFAULT_TAG_AI, tagEndpoint, readVaultTags } from './ai-tags';
@@ -191,6 +191,12 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
       const version = await client.call<string>('system/version');
       if (typeof version !== 'string') throw new Error('无法读取思源版本。');
       return { version, notebooks: (await client.notebooks()).filter(item => !item.closed) };
+    }
+    case 'SIYUAN_BACKFILL_IMAGES': {
+      if (settings.outputTarget !== 'siyuan' || !settings.siyuan) throw new Error('请先配置思源。');
+      const count = await navigator.locks.request('noting-output', () => queueSiyuanImageBackfill(settings.siyuan!));
+      await flushOutput(true);
+      return { count };
     }
     case 'SIYUAN_RECREATE': {
       if (settings.outputTarget !== 'siyuan' || !settings.siyuan) throw new Error('请先配置思源。');

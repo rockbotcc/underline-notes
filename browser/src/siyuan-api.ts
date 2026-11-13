@@ -1,4 +1,4 @@
-import type { SiyuanSettings } from '../../shared/model.ts';
+import { checkedImage, type ImageReference, type SiyuanSettings } from '../../shared/model.ts';
 
 export const SIYUAN_ID = /^\d{14}-[a-z0-9]{7}$/;
 export class SiyuanError extends Error {
@@ -28,7 +28,7 @@ export async function siyuanProfile(baseUrl: string, notebookId: string): Promis
 }
 
 const endpoints = new Set(['system/version', 'notebook/lsNotebooks', 'notebook/getNotebookConf', 'filetree/createDocByParent',
-  'filetree/getDocPaths', 'block/appendBlock', 'block/getBlockKramdown']);
+  'filetree/getDocPaths', 'block/appendBlock', 'block/getBlockKramdown', 'asset/upload']);
 export class SiyuanClient {
   config: Pick<SiyuanSettings, 'baseUrl' | 'apiToken'>;
   request: typeof fetch;
@@ -42,8 +42,8 @@ export class SiyuanClient {
     try {
       const request = this.request;
       response = await request(this.config.baseUrl + '/api/' + path, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Token ' + this.config.apiToken },
-        body: JSON.stringify(body), credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(15000),
+        method: 'POST', headers: { ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), Authorization: 'Token ' + this.config.apiToken },
+        body: body instanceof FormData ? body : JSON.stringify(body), credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(15000),
       });
     } catch { throw new SiyuanError('network', '无法连接思源，请启动思源并检查地址；待写入内容保留在本机。', true); }
     if ([401, 403].includes(response.status)) throw new SiyuanError('auth', '思源拒绝访问，请检查 API Token 和写入权限。');
@@ -54,6 +54,26 @@ export class SiyuanClient {
     catch { throw new SiyuanError('response', '思源返回格式异常，请检查服务地址。', true); }
     if (result?.code !== 0) throw new SiyuanError('rejected', '思源未接受操作，请检查 Token、笔记本状态与版本；结果将在重试前核对。');
     return result.data as T;
+  }
+  async uploadImage(image: ImageReference, name: string): Promise<string> {
+    const data = checkedImage(image).data;
+    if (!data) throw new SiyuanError('image', '图片尚未保存在本机，请重新保存该图片笔记后重试。');
+    const [header, encoded] = data.split(',');
+    const mime = header.slice(5).split(';')[0];
+    const extension = mime.slice(6).replace('svg+xml', 'svg').replace('x-icon', 'ico');
+    const bytes = Uint8Array.from(atob(encoded), char => char.charCodeAt(0));
+    if (!bytes.length || bytes.length > 12 * 1024 * 1024) throw new SiyuanError('image', '图片为空或超过 12 MB。');
+    const filename = name + '.' + extension;
+    const form = new FormData();
+    form.append('assetsDirPath', '/assets/');
+    form.append('file[]', new Blob([bytes], { type: mime }), filename);
+    const result = await this.call<{ errFiles?: string[]; failedFiles?: unknown[]; succMap?: Record<string, string> }>('asset/upload', form);
+    const path = result?.succMap?.[filename];
+    if (result?.errFiles?.length || result?.failedFiles?.length || typeof path !== 'string' ||
+      !/^assets\/[^<>\s\\]+$/.test(path) || path.split('/').some(part => part === '..' || part === '.')) {
+      throw new SiyuanError('upload', '思源图片附件上传未完成，请检查存储空间和权限后重试。', true);
+    }
+    return path;
   }
   async notebooks(): Promise<{ id: string; name: string; closed: boolean }[]> {
     const data = await this.call<{ notebooks: { id: string; name: string; closed: boolean }[] }>('notebook/lsNotebooks');

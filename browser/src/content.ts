@@ -89,22 +89,32 @@ let savingSelection = false;
 let imageTarget: HTMLImageElement | null = null;
 let renderTimer: ReturnType<typeof setTimeout>;
 let toastTimer: ReturnType<typeof setTimeout>;
+let awaitingSiyuanResult = false;
 let outputStatus: { target?: 'flomo' | 'siyuan'; docId?: string; sent?: boolean; connected: boolean; vaultName?: string; pending: boolean; error: string } | undefined;
 
 async function refreshOutputStatus(announce = false) {
   const url = currentUrl;
   const state = await rpc<NonNullable<typeof outputStatus>>({ type: 'PAGE_OUTPUT_STATUS', page: page() });
-  if (url !== currentUrl) return;
+  if (url !== currentUrl) { awaitingSiyuanResult = false; return; }
+  if (announce && state.target === 'siyuan') awaitingSiyuanResult = true;
   outputStatus = state;
   if (panelOpen) renderPanel();
-  if (announce) toast(outputMessage(), Boolean(state.error));
+  if (state.target === 'siyuan') {
+    if (awaitingSiyuanResult && (state.error || !state.connected || !state.pending)) {
+      awaitingSiyuanResult = false;
+      toast(outputMessage(), Boolean(state.error));
+    }
+  } else {
+    awaitingSiyuanResult = false;
+    if (announce) toast(outputMessage(), Boolean(state.error));
+  }
 }
 
 function outputMessage() {
   if (outputStatus?.target === 'siyuan') {
     if (outputStatus.error) return '思源写入需要处理：' + outputStatus.error;
     if (!outputStatus.connected) return '已保存在浏览器；请配置思源笔记';
-    if (outputStatus.pending) return '已保存在浏览器，等待写入思源';
+    if (outputStatus.pending) return '已保存在浏览器';
     return outputStatus.sent ? '已写入思源' : '已保存在浏览器；新增或修改笔记后写入思源';
   }
   if (outputStatus?.target === 'flomo') {
@@ -272,7 +282,7 @@ async function persist(annotation: Annotation, expectedNote = '') {
   window.getSelection()?.removeAllRanges();
   restoreHighlights();
   if (panelOpen) renderPanel();
-  toast('已保存在浏览器');
+  if (settings.outputTarget !== 'siyuan') toast('已保存在浏览器');
   void refreshOutputStatus(true).catch(() => undefined);
 }
 
@@ -427,7 +437,7 @@ function renderPanel(focusNote = false) {
           pageDraft = undefined;
           pageDraftBase = undefined;
           pageEditing = false;
-          toast('文章笔记已保存在浏览器');
+          if (settings.outputTarget !== 'siyuan') toast('文章笔记已保存在浏览器');
           void refreshOutputStatus(true).catch(() => undefined);
           renderPanel();
         } finally { saveNote.disabled = false; }
@@ -634,6 +644,7 @@ const ticker = setInterval(async () => {
   if (normalizeUrl(location.href) !== normalizeUrl(currentUrl)) {
     // A previous URL's counters never get attributed to the new route.
     currentUrl = location.href;
+    awaitingSiyuanResult = false;
     article = null;
     pageDraft = undefined;
     pageDraftBase = undefined;
@@ -666,5 +677,5 @@ const ticker = setInterval(async () => {
 }, 1000);
 document.addEventListener('visibilitychange', () => { lastTick = performance.now(); if (document.hidden) void sendReading(); });
 window.addEventListener('pagehide', () => { void sendReading(); });
-setInterval(() => { if (panelOpen && document.visibilityState === 'visible') void refreshOutputStatus().catch(() => undefined); }, 4000);
+setInterval(() => { if ((panelOpen || awaitingSiyuanResult) && document.visibilityState === 'visible') void refreshOutputStatus().catch(() => undefined); }, 4000);
 void refresh().catch(error => toast(error.message, true));

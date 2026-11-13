@@ -237,9 +237,23 @@ try {
   await page.getByRole('searchbox', { name: '搜索卡片' }).fill('随手');
   await page.locator('.un-card .protyle-wysiwyg').first().waitFor();
   await page.screenshot({ path: 'test-results/siyuan-plugin-quick-note.png', fullPage: true });
+  // Deletion runs only against this disposable workspace.
+  await page.getByRole('searchbox', { name: '搜索卡片' }).fill('');
+  for (const id of [quickId, first]) {
+    await card(id).getByRole('button', { name: '更多操作', exact: true }).click();
+    await card(id).getByRole('menuitem', { name: '删除', exact: true }).click();
+    await page.locator('.b3-dialog').getByRole('button', { name: '取消', exact: true }).click();
+    assert.ok((await readCards(api)).some(item => item.id === id), 'Cancel keeps the document');
+    await card(id).getByRole('button', { name: '更多操作', exact: true }).click();
+    await card(id).getByRole('menuitem', { name: '删除', exact: true }).click();
+    await page.locator('.b3-dialog').getByRole('button', { name: '删除', exact: true }).click();
+    await card(id).waitFor({ state: 'detached' });
+    await api('/api/sqlite/flushTransaction');
+    assert.ok(!(await readCards(api)).some(item => item.id === id), 'Confirmed deletion removes the native document');
+  }
   const relevant = errors.filter(text => /underline|un-card|protyle.*(undefined|null)/i.test(text));
   assert.deepEqual(relevant, []);
-  await writeFile('test-results/siyuan-plugin-result.json', JSON.stringify({ version: await api('/api/system/version'), passed: true, checks: ['real-plugin-load', 'native-render', 'search', 'parent-tag', 'notebook-filter', 'draft-restart', 'native-thought', 'browser-update-preserves-thought', 'lost-response-dedup', 'readonly-preview', 'open-native-document', 'obsidian-shared-style', 'menu-keyboard', 'double-click-editor', 'escape-retains-draft', 'shortcut-save', 'collapsible-tags', 'metadata-hidden', 'dark-theme', 'narrow-pane', 'quick-note-destination', 'quick-note-draft-restart', 'quick-note-native-document', 'quick-note-lost-response', 'quick-note-shortcut', 'review-filter-scope', 'review-eight-stable-cards', 'review-navigation', 'review-append-thought', 'review-completion', 'review-empty'], pageErrors: errors }, null, 2));
+  await writeFile('test-results/siyuan-plugin-result.json', JSON.stringify({ version: await api('/api/system/version'), passed: true, checks: ['delete-cancel', 'delete-local-and-capture', 'real-plugin-load', 'native-render', 'search', 'parent-tag', 'notebook-filter', 'draft-restart', 'native-thought', 'browser-update-preserves-thought', 'lost-response-dedup', 'readonly-preview', 'open-native-document', 'obsidian-shared-style', 'menu-keyboard', 'double-click-editor', 'escape-retains-draft', 'shortcut-save', 'collapsible-tags', 'metadata-hidden', 'dark-theme', 'narrow-pane', 'quick-note-destination', 'quick-note-draft-restart', 'quick-note-native-document', 'quick-note-lost-response', 'quick-note-shortcut', 'review-filter-scope', 'review-eight-stable-cards', 'review-navigation', 'review-append-thought', 'review-completion', 'review-empty'], pageErrors: errors }, null, 2));
   console.log('PASS 思源插件真实前端测试'); completed = true;
 } finally {
   if (!completed && page) { await page.screenshot({ path: 'test-results/siyuan-plugin-failure.png' }).catch(() => {}); console.error('Page errors:', errors); }

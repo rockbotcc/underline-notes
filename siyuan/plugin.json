@@ -2,7 +2,7 @@
   "name": "underline-notes",
   "author": "Underline Notes",
   "url": "https://github.com/rockbotcc/underline-notes",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "minAppVersion": "3.8.10",
   "backends": ["windows", "linux", "darwin", "docker"],
   "frontends": ["desktop", "desktop-window", "browser-desktop"],

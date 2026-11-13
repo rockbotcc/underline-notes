@@ -1,4 +1,4 @@
-import { Protyle, openTab, type App } from 'siyuan';
+import { Protyle, openTab, confirm, type App } from 'siyuan';
 import { reviewCards } from '../shared/review.ts';
 import { QuickNoteStore } from './quick-note.ts';
 import { tagTree, type TagBranch } from '../obsidian/tags.ts';
@@ -8,6 +8,7 @@ function element<K extends keyof HTMLElementTagNameMap>(tag: K, parent: HTMLElem
   const el = document.createElement(tag); el.className = className; el.textContent = text; parent.append(el); return el;
 }
 const paths: Record<string, string> = {
+  trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
   sparkles: 'm12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z', left: 'm15 6-6 6 6 6',
   layers: 'm12 3 10 5-10 5L2 8l10-5Zm-10 9 10 5 10-5M2 16l10 5 10-5',
   search: 'm21 21-4.4-4.4M19 10.5a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0',
@@ -231,15 +232,15 @@ export class Cardbox {
     });
     editor.disable(); this.editors.push(editor);
   }
-  private showMenu(anchor: HTMLButtonElement, edit: () => void, open: () => void) {
+  private showMenu(anchor: HTMLButtonElement, edit: () => void, open: () => void, remove: () => void) {
     const wasOpen = anchor.getAttribute('aria-expanded') === 'true'; this.menuCleanup?.(); if (wasOpen) return;
     const menu = element('div', anchor.parentElement!, 'un-menu'); menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', '卡片操作');
     const events = new AbortController();
     const close = (focus = false) => { menu.remove(); events.abort(); anchor.setAttribute('aria-expanded', 'false'); this.menuCleanup = undefined; if (focus && anchor.isConnected) anchor.focus(); };
     this.menuCleanup = () => close(); anchor.setAttribute('aria-expanded', 'true');
-    const choices = [[ '补写想法', 'edit', edit ], [ '打开', 'open', open ]] as const;
+    const choices = [[ '补写想法', 'edit', edit ], [ '打开', 'open', open ], [ '删除', 'trash', remove ]] as const;
     const items = choices.map(([label, symbol, action]) => {
-      const item = button(menu, label, () => { close(); action(); }, '', symbol); item.setAttribute('role', 'menuitem'); return item;
+      const item = button(menu, label, () => { close(); action(); }, symbol === 'trash' ? 'un-danger' : '', symbol); item.setAttribute('role', 'menuitem'); return item;
     });
     menu.addEventListener('keydown', event => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); }
@@ -255,7 +256,9 @@ export class Cardbox {
     const article = element('article', this.feed, 'nt-memo un-card' + (review ? ' nt-review-card' : '')); article.dataset.cardId = card.id; article.setAttribute('aria-label', card.title);
     const head = element('div', article, 'nt-memo-head');
     const when = cardDate(card); element('time', head, '', dateLabel(when)).dateTime = when;
-    const more = button(head, '更多操作', () => this.showMenu(more, showEditor, () => { void openTab({ app: this.app, doc: { id: card.id } }); }), 'nt-icon-button', 'more');
+    const more = button(head, '更多操作', () => this.showMenu(more, showEditor, () => { void openTab({ app: this.app, doc: { id: card.id } }); }, () => {
+      confirm('删除笔记', '确定删除这篇笔记吗？整篇文档、补写内容、未保存的想法及其子文档都会被删除。' + (card.kind === 'capture' ? '浏览器中的原始摘录会保留，后续同步将提示目标文档已删除。' : ''), () => { void remove(); }, undefined, true);
+    }), 'nt-icon-button', 'more');
     more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
     if (card.tags.length) {
       const tags = element('div', article, 'nt-card-tags'); tags.setAttribute('aria-label', '卡片标签');
@@ -288,12 +291,25 @@ export class Cardbox {
       void this.store.edit(card.id, text).then(() => { if (input.value === text) message.textContent = text ? '草稿已保存在本机' : ''; }).catch(() => { message.textContent = '草稿暂未保存到磁盘，请保持页面打开并重试。'; });
     });
     let saving = false;
+    let deleting = false;
+    const remove = async () => {
+      if (saving || deleting) { this.hint.textContent = '笔记正在保存或删除，请稍后重试。'; return; }
+      deleting = true; more.disabled = true; save.disabled = true; input.readOnly = true;
+      try {
+        await this.store.remove(card.id);
+        this.closedDrafts.delete(card.id);
+        this.cards = this.cards.filter(value => value.id !== card.id);
+        this.render(); await this.refresh();
+        if (!this.disposed) this.hint.textContent = '笔记已删除';
+      } catch (error) { if (!this.disposed) this.hint.textContent = error instanceof Error ? error.message : '删除失败，请刷新后重试。'; }
+      finally { deleting = false; more.disabled = false; save.disabled = false; input.readOnly = !!this.store.drafts[card.id]?.attempt; }
+    };
     input.addEventListener('keydown', event => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); void submit(); }
       else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); hideEditor(); }
     });
     const submit = async () => {
-      if (saving) return;
+      if (saving || deleting) return;
       saving = true; save.disabled = true; close.disabled = true; input.readOnly = true; message.textContent = '正在保存…';
       try {
         if (!this.store.drafts[card.id]?.attempt) await this.store.edit(card.id, input.value);

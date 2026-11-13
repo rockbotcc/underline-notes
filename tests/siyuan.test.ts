@@ -53,3 +53,29 @@ test('内容保留摘录及批注，隔离全文、附件和块属性注入；�
   const image = siyuanContent(article, { ...annotation, image: { url: 'https://example.com/img', alt: '插图', data: 'PRIVATE IMAGE' } });
   assert.ok(image.includes('图片文件尚未上传')); assert.ok(!image.includes('PRIVATE IMAGE'));
 });
+
+
+test('图片以 multipart 上传且校验附件结果，正文嵌入本地附件', async () => {
+  const image = { url: 'https://example.com/image.png', alt: '图片', data: 'data:image/png;base64,AQID' };
+  const client = new SiyuanClient({ baseUrl: 'http://localhost:6806', apiToken: 'secret' }, async (url, options) => {
+    assert.equal(url, 'http://localhost:6806/api/asset/upload');
+    assert.equal((options?.headers as Record<string, string>)['Content-Type'], undefined);
+    const form = options?.body as FormData;
+    assert.equal(form.get('assetsDirPath'), '/assets/');
+    const file = form.get('file[]') as File;
+    assert.equal(file.name, 'test.png'); assert.equal(file.type, 'image/png');
+    assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [1, 2, 3]);
+    return Response.json({ code: 0, data: { succMap: { 'test.png': 'assets/test.png' } } });
+  });
+  assert.equal(await client.uploadImage(image, 'test'), 'assets/test.png');
+  for (const data of [null, { errFiles: ['test.png'] }, { succMap: { 'test.png': 'https://evil.com/x' } }, { succMap: { 'test.png': 'assets/../x' } }]) {
+    const bad = new SiyuanClient(client.config, async () => Response.json({ code: 0, data }));
+    await assert.rejects(bad.uploadImage(image, 'test'), /附件上传未完成/);
+  }
+  await assert.rejects(client.uploadImage({ ...image, data: undefined }, 'test'), /重新保存/);
+  const article = { title: '来源', url: 'https://example.com', createdAt: 'today' } as Article;
+  const content = siyuanContent(article, { image, note: '批注', createdAt: 'today' } as Annotation, 'assets/test.png');
+  assert.ok(content.includes('![图片](<assets/test.png>)'));
+  assert.ok(content.includes('[原图链接](<https://example.com/image.png>)'));
+  assert.ok(!content.includes('尚未上传')); assert.ok(!content.includes('base64'));
+});

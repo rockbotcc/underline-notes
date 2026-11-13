@@ -173,6 +173,11 @@ action('siyuan-test', async () => {
   if (result.notebooks.length === 1) select.value = result.notebooks[0].id;
   get('siyuan-test-result').textContent = `已连接思源 ${result.version}，找到 ${result.notebooks.length} 个已打开笔记本。`;
 });
+action('siyuan-backfill-images', async () => {
+  notice('正在批量补传图片，请保持思源运行…');
+  const result = await rpc<{ count: number }>({ type: 'SIYUAN_BACKFILL_IMAGES' });
+  notice(result.count ? `已安排 ${result.count} 条图片笔记补传，已完成的会自动跳过。剩余任务将自动继续，请查看同步状态。` : '当前目标没有可补传的已同步图片笔记。');
+});
 action('siyuan-recreate', async () => {
   if (!window.confirm('为缺失的思源目标重新创建文档？已移出原笔记本的文档会保留，新副本将写入当前目标。')) return;
   await rpc({ type: 'SIYUAN_RECREATE' });
