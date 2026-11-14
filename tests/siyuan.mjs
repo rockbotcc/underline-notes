@@ -74,7 +74,15 @@ async function launch() {
   });
   worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   options = await context.newPage();
-  await options.goto(`chrome-extension://${new URL(worker.url()).host}/options.html`);
+  const optionsUrl = `chrome-extension://${new URL(worker.url()).host}/options.html`;
+  try { await options.goto(optionsUrl); }
+  catch (error) {
+    // Chrome may restore/open the same options page while a persistent profile starts.
+    // Only accept that exact competing navigation; other navigation errors still fail.
+    if (!error.message.includes(`is interrupted by another navigation to "${optionsUrl}"`)) throw error;
+    await options.waitForURL(optionsUrl);
+    await options.waitForLoadState('load');
+  }
   await options.locator('#output-target').waitFor();
   options.setDefaultTimeout(10000);
 }
