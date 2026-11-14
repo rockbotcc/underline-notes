@@ -20,6 +20,7 @@ interface Status {
 }
 
 function get<T extends HTMLElement = HTMLElement>(id: string): T { return document.getElementById(id) as T; }
+get('extension-version').textContent = 'v' + chrome.runtime.getManifest().version;
 let currentSettings = DEFAULT_SETTINGS;
 let busy = false;
 

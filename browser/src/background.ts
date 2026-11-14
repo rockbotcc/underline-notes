@@ -329,6 +329,10 @@ chrome.action.onClicked.addListener(tab => {
 async function scheduleFlush() {
   await chrome.alarms.create('noting-files', { periodInMinutes: 1 });
 }
-chrome.runtime.onInstalled.addListener(() => { void scheduleFlush(); void flushOutput().catch(console.error); });
+chrome.runtime.onInstalled.addListener(details => {
+  void scheduleFlush();
+  void flushOutput().catch(console.error);
+  if (details.reason === 'install') void chrome.runtime.openOptionsPage();
+});
 chrome.runtime.onStartup.addListener(() => { void scheduleFlush(); void flushOutput().catch(console.error); });
 chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'noting-files') void flushOutput().catch(console.error); });

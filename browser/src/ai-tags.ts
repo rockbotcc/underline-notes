@@ -19,7 +19,7 @@ export async function readVaultTags(directory?: FileSystemDirectoryHandle): Prom
 }
 export function tagEndpoint(base: string): string {
   const url = new URL(base);
-  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('模型接口地址无效');
+  if (!(url.protocol === 'https:' || url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) || url.username || url.password || url.search || url.hash) throw new Error('模型接口须使用 HTTPS；仅本机服务允许 HTTP，且不能包含账号、查询参数或片段。');
   url.pathname = url.pathname.replace(/\/chat\/completions\/?$/, '').replace(/\/$/, '') + '/chat/completions';
   return url.href;
 }

@@ -277,6 +277,12 @@ try {
   await page.waitForFunction(() => CSS.highlights.get('noting-yellow')?.size === 2);
   await page.mouse.move(300, 320);
   await options.screenshot({ path: path.join(output, 'settings.png'), fullPage: true });
+  assert.equal((await call(options, { type: 'STATUS' })).settings.recordHistory, false);
+  assert.equal((await call(options, { type: 'BACKUP' })).sessions.length, 0, '未开启前不得保存阅读会话');
+  await options.locator('#record-history').check();
+  await options.getByRole('button', { name: '保存设置', exact: true }).click();
+  await options.getByRole('status').filter({ hasText: '已保存' }).first().waitFor();
+  await page.reload();
   await page.bringToFront();
   await page.waitForTimeout(16500);
   const backup = await call(options, { type: 'BACKUP' });

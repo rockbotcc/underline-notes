@@ -12,11 +12,17 @@
       <a class="brand" href="options.html" aria-label="划线笔记 / Underline Notes"><span class="brand-mark" aria-hidden="true">U</span><span class="brand-name">划线笔记<small> / Underline Notes</small></span></a>
       <div class="rail-copy">读过的好句子，<br>留下来的想法。</div>
       <nav><a href="#destination" class="active">笔记写入</a><a href="#reading">阅读记录</a><a href="#backup">备份与恢复</a></nav>
-      <div class="rail-bottom"><span class="dot"></span> 本地优先 <span>v0.4</span></div>
+      <div class="rail-bottom"><span class="dot"></span> 本地优先 <span id="extension-version"></span></div>
     </aside>
     <main>
       <header class="page-header"><h1>笔记写入</h1><p>选择笔记写入位置，管理阅读记录和备份。</p></header>
       <div id="notice" role="status" hidden></div>
+      <section class="card" id="privacy-summary">
+        <div class="section-title"><div><h2>开始使用与隐私</h2><p>在网页中选中文字即可划线，点击扩展图标查看笔记；无需账号，也无需安装 Obsidian。</p></div></div>
+        <p>划线时会在本机保存网页地址、标题、正文、摘录和批注。自动阅读记录默认关闭；在下方开启并保存后，会记录文章内容、阅读日期、活跃时长和滚动进度。</p>
+        <p>选择文件夹后会写入本地文件。flomo、思源和模型服务仅在你配置启用后接收相应笔记内容，具体数据范围见各设置项。开发者不接收笔记，不提供广告或使用分析。</p>
+        <a href="https://github.com/rockbotcc/underline-notes/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">阅读完整隐私政策 ↗</a>
+      </section>
       <section class="card" id="destination">
         <div class="section-title"><div><h2>笔记写入位置</h2><p>笔记先保存在浏览器，再写入你选择的位置。</p></div></div>
         <label class="field" for="output-target">写入位置</label>
@@ -54,7 +60,7 @@
         <section class="card" id="ai-tags">
           <div class="section-title"><div><h2>大模型自动标签</h2><p>保存划线或笔记时，从整个 Obsidian 仓库的已有标签中选择，最多添加三个，不创建未知标签。</p></div></div>
           <label class="toggle-row"><span><strong>自动添加已有标签</strong><small>默认关闭。先连接 Obsidian 仓库文件夹，并在 Obsidian 划线笔记插件中导出全仓库标签。标签为空时不调用模型。</small></span><input type="checkbox" id="ai-enabled" role="switch"><span class="switch" aria-hidden="true"></span></label>
-          <label class="field" for="ai-base-url">模型接口地址<span>支持 OpenAI 兼容 Chat Completions 接口，填写含版本路径的地址。</span></label>
+          <label class="field" for="ai-base-url">模型接口地址<span>支持 OpenAI 兼容 Chat Completions 接口，填写含版本路径的 HTTPS 地址；仅本机服务允许 HTTP。</span></label>
           <input type="url" id="ai-base-url" placeholder="https://your-provider.example/v1" maxlength="2000">
           <label class="field" for="ai-api-key">API Key（本地模型可留空）</label>
           <input type="password" id="ai-api-key" autocomplete="off" maxlength="4000">
@@ -66,7 +72,7 @@
         </section>
         <section class="card" id="reading">
           <div class="section-title"><div><h2>阅读记录</h2><p>使用本地 Obsidian 时，读过的文章会按天整理为 Markdown 阅读日志；flomo 和思源不接收自动阅读记录。</p></div></div>
-          <label class="toggle-row"><span><strong>自动记录阅读</strong><small>文章页在前台活跃约 15 秒后收录，闲置 60 秒暂停计时。</small></span><input type="checkbox" id="record-history" role="switch"><span class="switch" aria-hidden="true"></span></label>
+          <label class="toggle-row"><span><strong>自动记录阅读</strong><small>默认关闭。开启并保存后，文章页在前台活跃约 15 秒后保存地址、标题、正文、日期、活跃时长与滚动进度；闲置 60 秒暂停计时。</small></span><input type="checkbox" id="record-history" role="switch"><span class="switch" aria-hidden="true"></span></label>
           <label class="field" for="excluded-domains">排除的网站<span>每行一个域名，也会排除它的子域名。划线和阅读记录都会停用。</span></label>
           <textarea id="excluded-domains" rows="3" placeholder="mail.google.com&#10;example.com"></textarea>
           <div class="field-row"><div id="vault-settings"><label class="field" for="vault-name">Obsidian 仓库名称（可选）<span>用于“在 Obsidian 中打开”，与 Obsidian 显示的名称一致。</span></label><input type="text" id="vault-name" placeholder="例如：My Notes" maxlength="200"></div><button class="primary" type="submit">保存设置</button></div>

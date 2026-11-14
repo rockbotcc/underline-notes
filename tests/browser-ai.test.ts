@@ -42,3 +42,9 @@ test('请求有界且不携带浏览器凭据；无候选或未开启时不请�
   assert.throws(() => tagEndpoint('https://user:pass@example.com/v1'));
   assert.throws(() => tagEndpoint('file:///tmp/model'));
 });
+
+
+test('模型接口禁止远程明文传输，保留本机模型支持', () => {
+  for (const host of ['example.com', '192.168.1.2', 'localhost.example.com']) assert.throws(() => tagEndpoint('http://' + host + '/v1'));
+  for (const host of ['localhost', '127.0.0.1', '[::1]']) assert.equal(tagEndpoint('http://' + host + ':8080/v1'), 'http://' + host + ':8080/v1/chat/completions');
+});

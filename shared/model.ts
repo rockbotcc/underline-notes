@@ -85,7 +85,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   outputTarget: 'obsidian',
   flomoApiUrl: '',
-  recordHistory: true,
+  recordHistory: false,
   excludedDomains: [],
   vaultName: '',
   vaultFolder: 'Reading',
