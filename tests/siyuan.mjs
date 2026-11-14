@@ -1,3 +1,4 @@
+import { exposeExtensionUI } from './extension-ui.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -83,7 +84,7 @@ async function call(message) {
 }
 async function openArticle() {
   page = await context.newPage(); await page.goto(baseUrl + '/article');
-  await page.locator('#noting-extension').waitFor({ state: 'attached' });
+  await exposeExtensionUI(page);
   await worker.evaluate(async () => {
     const tab = (await chrome.tabs.query({})).find(tab => tab.url?.includes('/article'));
     await chrome.tabs.sendMessage(tab.id, { type: 'NOTING_TOGGLE' });

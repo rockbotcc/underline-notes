@@ -1,3 +1,4 @@
+import { exposeExtensionUI } from './extension-ui.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -54,7 +55,7 @@ try {
   assert.equal(await worker.evaluate(() => flomoCalls.length), 0, 'configuration must not create a test memo');
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${server.address().port}/article`);
-  await page.locator('#noting-extension').waitFor({ state: 'attached' });
+  await exposeExtensionUI(page);
   await worker.evaluate(async () => {
     const tab = (await chrome.tabs.query({})).find(tab => tab.url?.includes('/article'));
     await chrome.tabs.sendMessage(tab.id, { type: 'NOTING_TOGGLE' });

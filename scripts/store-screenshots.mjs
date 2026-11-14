@@ -1,3 +1,4 @@
+import { exposeExtensionUI } from '../tests/extension-ui.mjs';
 // Capture the real packaged extension with disposable, authored sample content.
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
@@ -17,7 +18,7 @@ try {
  const id = new URL(worker.url()).host;
  const page = await context.newPage();
  await page.goto(`http://127.0.0.1:${server.address().port}/reading`);
- await page.locator('#noting-extension').waitFor({ state: 'attached' });
+ await exposeExtensionUI(page);
  await page.locator('#quote').evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); node.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); });
  await page.getByRole('button', { name: '记笔记', exact: true }).click();
  await page.getByRole('textbox', { name: '划线笔记', exact: true }).fill('回顾时先问自己：这句话与我的哪段经验有关？\n让摘录成为思考的起点。');

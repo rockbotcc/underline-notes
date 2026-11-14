@@ -1,3 +1,4 @@
+import { exposeExtensionUI } from './extension-ui.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -47,7 +48,7 @@ try {
   });
   const page = await context.newPage();
   await page.goto(base + '/article');
-  await page.locator('#noting-extension').waitFor({ state: 'attached' });
+  await exposeExtensionUI(page);
   const hover = async selector => {
     const toolbar = page.getByRole('toolbar', { name: '划线笔记图片工具', exact: true });
     // The extension can still be loading page settings on the first hover.
@@ -77,6 +78,7 @@ try {
   assert.equal(backup.articles[0].annotations.length, 2);
   assert.equal(backup.articles[0].annotations[1].note, '');
   await page.reload();
+  await exposeExtensionUI(page);
   await hover('#diagram');
   await page.getByRole('button', { name: '查看笔记', exact: true }).click();
   const reader = page.getByRole('dialog', { name: '查看图片笔记', exact: true });
@@ -84,6 +86,7 @@ try {
   await reader.getByRole('button', { name: '关闭笔记编辑器' }).click();
   await page.route('**/diagram.svg*', route => route.abort());
   await page.reload();
+  await exposeExtensionUI(page);
   await worker.evaluate(async () => {
     const tab = (await chrome.tabs.query({})).find(tab => tab.url?.endsWith('/article'));
     await chrome.tabs.sendMessage(tab.id, { type: 'NOTING_TOGGLE' });

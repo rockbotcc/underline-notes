@@ -1,3 +1,4 @@
+import { exposeExtensionUI } from './extension-ui.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -144,7 +145,7 @@ try {
   }
   const page = await context.newPage();
   await page.goto(url);
-  await page.locator('#noting-extension').waitFor({ state: 'attached' });
+  await exposeExtensionUI(page);
   // Await initialization through the worker before exercising page interaction.
   await call(options, { type: 'STATUS' });
   await select(page, '#quote');
@@ -270,6 +271,7 @@ try {
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await page.waitForFunction(() => CSS.highlights.get('noting-yellow')?.size === 2);
   await page.reload();
+  await exposeExtensionUI(page);
   await page.waitForFunction(() => CSS.highlights.get('noting-yellow')?.size === 2);
   console.log('PASS 划线批注、文章笔记、跨节点选区、刷新恢复');
 
@@ -283,6 +285,7 @@ try {
   await options.getByRole('button', { name: '保存设置', exact: true }).click();
   await options.getByRole('status').filter({ hasText: '已保存' }).first().waitFor();
   await page.reload();
+  await exposeExtensionUI(page);
   await page.bringToFront();
   await page.waitForTimeout(16500);
   const backup = await call(options, { type: 'BACKUP' });
@@ -523,6 +526,7 @@ try {
   ({ worker, id } = await launch());
   const restored = await context.newPage();
   await restored.goto(url);
+  await exposeExtensionUI(restored);
   await restored.waitForFunction(() => CSS.highlights.get('noting-yellow')?.size === 2);
   console.log('PASS 浏览器重启后恢复');
   const restoredOptions = await context.newPage();

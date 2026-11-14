@@ -1,3 +1,4 @@
+import { exposeExtensionUI } from './extension-ui.mjs';
 // Starts only an isolated kernel owned by this test. Never targets a user's running instance.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -74,7 +75,7 @@ try {
   await call({ type: 'SIYUAN_TEST', baseUrl, apiToken: token });
   await call({ type: 'SAVE_SETTINGS', settings: { ...settings, recordHistory: false, outputTarget: 'siyuan', siyuan: { baseUrl, apiToken: token, notebookId } } });
   const page = await context.newPage(); await page.goto(`http://127.0.0.1:${articleServer.address().port}/article`);
-  await page.locator('#noting-extension').waitFor({ state: 'attached' });
+  await exposeExtensionUI(page);
   await worker.evaluate(async () => {
     const tab = (await chrome.tabs.query({})).find(tab => tab.url?.includes('/article'));
     await chrome.tabs.sendMessage(tab.id, { type: 'NOTING_TOGGLE' });

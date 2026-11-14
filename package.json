@@ -8,6 +8,7 @@
     "build": "node scripts/build.mjs",
     "check": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:security": "node tests/security.mjs",
     "test:e2e": "node tests/browser.mjs",
     "test:browser-ai": "node tests/browser-ai.mjs",
     "test:flomo": "node tests/flomo.mjs",

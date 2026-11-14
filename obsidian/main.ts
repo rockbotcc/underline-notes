@@ -206,7 +206,7 @@ class NotingSettings extends PluginSettingTab {
         });
       });
     };
-    field('baseUrl', '接口地址', '兼容 Chat Completions 的 API 根地址。支持云服务与本地服务。', 'https://your-provider.example/v1');
+    field('baseUrl', '接口地址', '兼容 Chat Completions 的 API 根地址。远程服务须使用 HTTPS，仅本机回环地址允许 HTTP。', 'https://your-provider.example/v1');
     field('apiKey', 'API Key', '保存在本仓库的插件 data.json 中，未加密；本地免鉴权服务可留空。', 'sk-…');
     field('model', '标签模型', '填写用于提取主题标签的模型 ID。', '模型 ID');
     new Setting(this.containerEl).setName('保存后自动添加标签').setDesc('配置模型后生效。在 Obsidian 保存或浏览器同步新内容时自动添加；打开仓库不会批量处理旧卡片。').addToggle(toggle => toggle.setValue(!!this.plugin.preferences.ai.autoTag).onChange(async value => {

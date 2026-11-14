@@ -70,7 +70,7 @@ Copyright 2026 rockbotcc。本项目采用 [Apache License 2.0](LICENSE)，作�
 
 以下为 Obsidian 插件的独立配置：
 
-在「设置 → 划线笔记 / Underline Notes → AI 自动标签」填写兼容 Chat Completions 的接口地址、API Key 和标签模型 ID。已有的模型配置会继续使用，不再需要向量模型。配置完成后，“保存后自动添加标签”默认开启，可在设置中关闭；“测试连接”只发送测试短句。
+在「设置 → 划线笔记 / Underline Notes → AI 自动标签」填写兼容 Chat Completions 的接口地址、API Key 和标签模型 ID。远程服务须使用 HTTPS；仅 `localhost`、`127.0.0.1`、`[::1]` 本机地址允许 HTTP。已有的模型配置会继续使用，不再需要向量模型。配置完成后，“保存后自动添加标签”默认开启，可在设置中关闭；“测试连接”只发送测试短句。
 
 在卡片盒新建、编辑保存，以及浏览器同步或外部编辑产生卡片修改时触发。插件需在 Obsidian 中运行。打开仓库不会批量处理旧卡片；内容未变且已处理过时不重复请求。模型最多收到当前卡片的 200 字标题、1800 字批注、1800 字延伸思考、1200 字摘录、最多 30 个手写标签，以及整个仓库的已有标签名称。不发送上下文、全文、其他卡片正文、附件或历史讨论。普通标签、多级标签和 YAML tags 都可作为候选，不限定 P.A.I.R. 分类，也不截取前 80 或 200 个标签。
 
@@ -177,6 +177,7 @@ npm run check
 npm test
 npm run build
 npx playwright install chromium
+npm run test:security
 npm run test:e2e
 npm run test:obsidian
 ```

@@ -9,7 +9,14 @@ const highlightColors = { yellow: '#f8df83', green: '#c3dfad', blue: '#bbdaf2', 
 const host = document.createElement('div');
 host.dataset.notingRoot = '';
 host.id = 'noting-extension';
-const shadow = host.attachShadow({ mode: 'open' });
+// Keep private notes out of the website's DOM API. This runs in Chrome's isolated world.
+const shadow = host.attachShadow({ mode: 'closed' });
+// Reject scripted UI events even if a caller obtains an internal node.
+for (const type of ['click', 'dblclick', 'keydown', 'keypress', 'keyup', 'input', 'pointerdown']) {
+  shadow.addEventListener(type, event => {
+    if (!event.isTrusted) event.stopImmediatePropagation();
+  }, { capture: true });
+}
 const style = document.createElement('style');
 style.textContent = css;
 shadow.append(style);
@@ -354,15 +361,17 @@ function openEditor(annotation: Annotation, rect: DOMRect | null = null, editing
       if (panelOpen) renderPanel();
     }, 'danger'));
   }
-  const save = button('保存', async () => {
+  const saveAnnotation = async () => {
+    if (save.disabled) return;
     save.disabled = true;
     try { await persist({ ...annotation, color, note: input.value }, annotation.note); }
     finally { save.disabled = false; }
-  }, 'primary');
+  };
+  const save = button('保存', saveAnnotation, 'primary');
   input.addEventListener('keydown', event => {
     if (!event.isComposing && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault();
-      save.click();
+      void saveAnnotation().catch(error => toast(error instanceof Error ? error.message : String(error), true));
     }
   });
   actions.append(save);
@@ -430,7 +439,8 @@ function renderPanel(focusNote = false) {
         if (pageDraft === undefined) pageDraftBase = article?.pageNote ?? '';
         pageDraft = note.value;
       });
-      const saveNote = button('保存文章笔记', async () => {
+      const savePageNote = async () => {
+        if (saveNote.disabled) return;
         saveNote.disabled = true;
         try {
           article = await rpc<Article>({ type: 'SAVE_PAGE_NOTE', page: page(true), note: note.value, expectedNote: pageDraftBase ?? article?.pageNote ?? '' });
@@ -441,7 +451,8 @@ function renderPanel(focusNote = false) {
           void refreshOutputStatus(true).catch(() => undefined);
           renderPanel();
         } finally { saveNote.disabled = false; }
-      }, 'primary save-page');
+      };
+      const saveNote = button('保存文章笔记', savePageNote, 'primary save-page');
       const cancelNote = button('取消', () => {
         if (pageDraft !== pageDraftBase && !window.confirm('文章笔记还没保存，放弃修改？')) return;
         pageDraft = undefined;
@@ -452,7 +463,7 @@ function renderPanel(focusNote = false) {
       note.addEventListener('keydown', event => {
         if (!event.isComposing && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
           event.preventDefault();
-          saveNote.click();
+          void savePageNote().catch(error => toast(error instanceof Error ? error.message : String(error), true));
         }
       });
       const actions = element('div', 'actions page-note-actions');
@@ -565,14 +576,21 @@ document.addEventListener('mouseover', event => {
 
 document.addEventListener('mouseup', event => { if (!event.composedPath().includes(host)) setTimeout(inspectSelection, 0); });
 document.addEventListener('keyup', event => { if (event.key.startsWith('Arrow') && event.shiftKey) inspectSelection(); });
-document.addEventListener('pointerdown', event => {
+function dismissOutside(event: Event) {
+  if (!event.isTrusted) return;
   const path = event.composedPath();
   if (!path.includes(imageToolbar)) imageToolbar.hidden = true;
   if (path.includes(editor)) return;
   if (!editor.hidden && !closeEditor()) return;
   if (panelOpen && !path.includes(panel) && !path.includes(toolbar) && !path.includes(imageToolbar)) togglePanel(false);
+}
+// Closed roots retarget document events to host; inspect internal targets inside the root.
+shadow.addEventListener('pointerdown', dismissOutside, { capture: true });
+document.addEventListener('pointerdown', event => {
+  if (!event.composedPath().includes(host)) dismissOutside(event);
 }, { capture: true });
 document.addEventListener('click', event => {
+  if (!event.isTrusted) return;
   if (event.composedPath().includes(host) || !window.getSelection()?.isCollapsed || excluded) return;
   for (const [id, range] of ranges) {
     if ([...range.getClientRects()].some(rect => event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom)) {
@@ -583,7 +601,7 @@ document.addEventListener('click', event => {
   }
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !event.isComposing) { toolbar.hidden = true; imageToolbar.hidden = true; closeEditor(); }
+  if (event.isTrusted && event.key === 'Escape' && !event.isComposing) { toolbar.hidden = true; imageToolbar.hidden = true; closeEditor(); }
 });
 window.addEventListener('scroll', () => { toolbar.hidden = true; imageToolbar.hidden = true; }, { passive: true });
 window.addEventListener('beforeunload', event => {

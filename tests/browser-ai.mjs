@@ -1,3 +1,4 @@
+import { exposeExtensionUI } from './extension-ui.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -35,7 +36,7 @@ try {
   };
   const page = await context.newPage();
   await page.goto(base + '/article');
-  await page.locator('#noting-extension').waitFor({ state: 'attached' });
+  await exposeExtensionUI(page);
   await page.locator('#quote').evaluate(node => {
     const range = document.createRange(); range.selectNodeContents(node);
     const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);

@@ -8,7 +8,7 @@ export type VectorCache = Map<string, { version: string; vector: number[] }>;
 export function endpoint(base: string, route: 'chat/completions' | 'embeddings'): string {
   let url: URL;
   try { url = new URL(base.trim()); } catch { throw new Error('请在「划线笔记 / Underline Notes」设置中填写有效的 AI 接口地址。'); }
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('接口地址需为 HTTP(S) 地址，不包含账号、查询参数或片段。');
+  if (!(url.protocol === 'https:' || url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) || url.username || url.password || url.search || url.hash) throw new Error('接口地址须使用 HTTPS；仅本机服务允许 HTTP，且不能包含账号、查询参数或片段。');
   url.pathname = url.pathname.replace(/\/(chat\/completions|embeddings)\/?$/, '').replace(/\/$/, '') + '/' + route;
   return url.toString();
 }
