@@ -563,6 +563,9 @@ try {
     const tab = (await chrome.tabs.query({})).find(tab => tab.url?.includes('/article'));
     await chrome.tabs.sendMessage(tab.id, { type: 'NOTING_TOGGLE' });
   });
+  // The settings tab was opened last. Bring the article forward so Chromium does
+  // not throttle animation frames while Playwright waits for a stable button.
+  await restored.bringToFront();
   restored.once('dialog', dialog => dialog.accept());
   await restored.getByRole('button', { name: '移除本页记录', exact: true }).click();
   await restored.getByText('你的摘录与想法会出现在这里。', { exact: false }).waitFor();
