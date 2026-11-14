@@ -1,1 +1,1 @@
-00c2116da8d081ebc4ad3289482ae8cbc345eb7ec3a3eab58a7bd60d446ae31a  store/chrome/underline-notes-chrome-0.5.1.zip
+0e8851028a77328bf3fc8250ab277320454e9828cf641eedc239bbca9144d1bc  store/chrome/underline-notes-chrome-0.5.2.zip

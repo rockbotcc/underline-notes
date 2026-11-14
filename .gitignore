@@ -4,6 +4,7 @@ dist-obsidian/
 dist-release/
 test-results/
 *.zip
+!store/chrome/underline-notes-chrome-*.zip
 .DS_Store
 
 dist-siyuan/

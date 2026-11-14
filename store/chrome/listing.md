@@ -1,6 +1,12 @@
-# Chrome Web Store 上架材料 · 0.5.1
+# Chrome Web Store 上架材料 · 0.5.2
 
-准备日期：2026-11-14。此目录为本次商店候选版本材料，尚未提交商店。
+准备日期：2026-11-14。此目录为 0.5.2 商店提交材料，尚未上传或提交 Chrome Web Store。安装包与 [GitHub 0.5.2 Release](https://github.com/rockbotcc/underline-notes/releases/tag/0.5.2) 的 Chrome ZIP 完全一致，仅文件名增加版本号；指纹见 `SHA256SUMS.txt`。
+
+## 0.5.2 更新说明（可复制）
+
+安全更新：加强网页笔记界面隔离，阻止网页脚本读取或篡改当前页笔记，以及通过伪造点击、双击或快捷键执行笔记操作。正常编辑、Ctrl/Command+Enter 保存、图片笔记和同步功能保持可用。已有笔记无需迁移，权限和数据用途未增加。
+
+可选模型服务继续要求远程接口使用 HTTPS，仅本机回环地址允许 HTTP。配套 Obsidian 插件 0.5.2 也补齐了这一限制；该插件需单独升级，不包含在 Chrome 商店 ZIP 中。
 
 ## 商店详情
 
@@ -36,14 +42,15 @@
 - 隐私政策：https://github.com/rockbotcc/underline-notes/blob/main/PRIVACY.md
 - 联系邮箱：fengzhao.gfz@gmail.com
 
-本次提交包含新版 PRIVACY.md；推送到 main 后，上述地址即提供新版政策。提交商店前核对页面日期为 2026-11-14，并注明新安装默认关闭阅读记录。
+本目录 `PRIVACY.md` 与仓库根目录政策保持一致，政策日期为 2026-11-14，说明新安装默认关闭阅读记录。0.5.2 未增加权限、数据类型或发送用途。
 
 ### 视觉素材
 
 - 图标：`icon-128.png`（同安装包内的 128px 图标）
 - 截图：依序 `01-article.png`、`02-settings.png`、`03-reading-privacy.png`，1280 × 800，真实扩展界面，原创测试文章，无私人数据
 - 小型宣传图：`promo-440x280.png`，440 × 280
-- 重建截图：先 `npm run build`，再 `node scripts/store-screenshots.mjs`
+- 本轮截图从 0.5.2 Release ZIP 解压后的扩展生成；设置页显示 v0.5.2。
+- 重建截图：在隔离目录将对应 Release ZIP 解压到 `dist/`，再运行 `node scripts/store-screenshots.mjs`；使用临时浏览器配置和原创示例数据。
 
 ## 隐私权做法（后台填写）
 
@@ -94,7 +101,7 @@ Chrome 120+。核心功能无需登录、测试账号、Obsidian 或任何付费
 ## 提交顺序
 
 1. 注册开发者账号、完成付款，并满足后台账户验证与两步验证要求。
-2. 发布本次隐私政策，确认无需登录即可打开且描述新安装默认关闭阅读记录。
-3. 上传 `underline-notes-chrome-0.5.1.zip`，不要上传整个材料目录或源码仓库。
+2. 核对已发布的隐私政策可访问，并与本目录副本一致。
+3. 在仓库根目录运行 `shasum -a 256 -c store/chrome/SHA256SUMS.txt`，确认通过后上传 `underline-notes-chrome-0.5.2.zip`，不要上传整个材料目录或源码仓库。
 4. 填写本文件的详细说明、网址、截图、权限和隐私声明。
 5. 选择公开可见性和目标地区，填写审核测试说明，提交审核。账号信息、地区、声明及最终审核结果需在商店后台确认。
